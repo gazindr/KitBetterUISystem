@@ -3,7 +3,11 @@
   "rootNamespace": "Project.UI.Editor",
   "references": [
     "Yeen.UISystem.Runtime",
-    "Unity.UGUI"
+    "Unity.UGUI",
+    "Sirenix.OdinInspector.Editor",
+    "Sirenix.OdinInspector.Attributes",
+    "Sirenix.Utilities.Editor",
+    "Sirenix.Utilities"
   ],
   "includePlatforms": [
     "Editor"

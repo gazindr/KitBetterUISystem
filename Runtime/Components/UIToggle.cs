@@ -82,6 +82,12 @@ namespace Project.UI
             get { return isOn; }
         }
 
+        /// <summary>Doozy-compatible event alias.</summary>
+        public UIBoolEvent OnValueChangedCallback
+        {
+            get { return onValueChanged; }
+        }
+
         public new void Select()
         {
             SetIsOn(true, false, true);

@@ -24,6 +24,10 @@ namespace Project.UI
         [MinValue(0f)]
         public float cooldown;
 
+        [Tooltip("Если не None — этот behaviour также срабатывает по GetKeyDown этой клавиши (в Play Mode).")]
+        [LabelText("Keyboard Key")]
+        public KeyCode keyboardKey = KeyCode.None;
+
         [ListDrawerSettings(ShowFoldout = true, DefaultExpandedState = true, HideAddButton = true, HideRemoveButton = true, DraggableItems = false)]
         public List<UIBehaviourEntry> entries = new List<UIBehaviourEntry>();
 
@@ -109,6 +113,7 @@ namespace Project.UI
             allowWhenDisabled = source.allowWhenDisabled;
             allowDuplicates = false;
             cooldown = source.cooldown;
+            keyboardKey = source.keyboardKey;
             lastExecuteTime = -999999f;
 
             entries = new List<UIBehaviourEntry>();
@@ -158,7 +163,13 @@ namespace Project.UI
 
         public string GetDisplayName()
         {
-            return NicifyVariableName(trigger.ToString());
+            string name = NicifyVariableName(trigger.ToString());
+            if (keyboardKey != KeyCode.None)
+            {
+                name += " [" + keyboardKey + "]";
+            }
+
+            return name;
         }
 
         private static string NicifyVariableName(string value)

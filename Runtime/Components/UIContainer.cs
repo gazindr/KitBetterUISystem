@@ -46,6 +46,10 @@ namespace Project.UI
         [MinValue(0f)]
         public float autoHideDelay = 1f;
 
+        [TabGroup("Settings")]
+        [Tooltip("После Hide/InstantHide отключать GameObject (как Doozy InstantHide).")]
+        public bool deactivateOnHidden;
+
         [TabGroup("Animations")]
         [HideLabel]
         public UIContainerAnimationProfile animations = new UIContainerAnimationProfile();
@@ -99,6 +103,32 @@ namespace Project.UI
         public UIContainerState State
         {
             get { return state; }
+        }
+
+        /// <summary>Visible или Showing — для совместимости с Doozy UIContainer.isVisible.</summary>
+        public bool isVisible
+        {
+            get { return state == UIContainerState.Visible || state == UIContainerState.Showing; }
+        }
+
+        public bool isShowing
+        {
+            get { return state == UIContainerState.Showing; }
+        }
+
+        public bool isHiding
+        {
+            get { return state == UIContainerState.Hiding; }
+        }
+
+        public bool isHidden
+        {
+            get { return state == UIContainerState.Hidden || state == UIContainerState.Hiding; }
+        }
+
+        public bool IsVisible
+        {
+            get { return isVisible; }
         }
 
         public string Id
@@ -535,6 +565,11 @@ namespace Project.UI
 
             UIContainerQueueManager.NotifyHidden(this);
             transitionRoutine = null;
+
+            if (deactivateOnHidden)
+            {
+                gameObject.SetActive(false);
+            }
         }
 
         private void ApplyStartupMode()

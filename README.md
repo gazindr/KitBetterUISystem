@@ -96,6 +96,10 @@ Animation inspector использует адаптивную раскладку
 
 `Add Entry` и `Remove Entry` больше не используются. Если один click должен делать несколько вещей, добавь несколько вызовов в `Unity Event` или несколько `UIBehaviourAction` в `Actions`.
 
+Поля внутри block:
+
+- `Keyboard Key` - опционально. Если не `None`, этот же behaviour срабатывает по `Input.GetKeyDown` в Play Mode (например `Escape` для Close / Continue). Не вызывает отдельно `UIButton.Click()` — только entry/actions этого block.
+
 Поля внутри entry:
 
 - `Enabled` - включает или отключает выполнение entry.
@@ -122,6 +126,7 @@ Animation inspector использует адаптивную раскладку
 4. Во вкладке `Animations` настрой анимации для `Normal`, `Highlighted`, `Pressed`, `Selected`, `Disabled`.
 5. Во вкладке `Behaviours` выбери trigger, например `Pointer Left Click`, нажми зеленую кнопку `Add Behaviour`.
 6. В добавленном block настрой `Unity Event` или `UIBehaviourAction` assets.
+7. При желании укажи `Keyboard Key` (например `Space` / `Escape`), чтобы тот же behaviour вызывался с клавиатуры.
 
 Из кода:
 

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.1 - 2026-07-24
+
+- `UIBehaviourBlock`: optional `keyboardKey` — behaviour also fires on `Input.GetKeyDown` in Play Mode.
+- Inspector shows Keyboard Key under each Behaviour Block; tab label includes the key when set.
+- `UIContainer`: `isVisible` / `isShowing` / `isHiding` / `isHidden`, `deactivateOnHidden`.
+- `UIToggle`: `OnValueChangedCallback` alias for Doozy migration.
+
 ## 0.1.0 - 2026-07-01
 
 - Initial UPM package export of UI System.

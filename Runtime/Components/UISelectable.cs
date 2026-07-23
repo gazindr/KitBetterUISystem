@@ -252,6 +252,54 @@ namespace Project.UI
             base.OnDisable();
         }
 
+        protected virtual void Update()
+        {
+            PollKeyboardBehaviours();
+        }
+
+        /// <summary>
+        /// Выполнить один behaviour block (используется для keyboard hotkey и ручного вызова).
+        /// </summary>
+        public void ExecuteBehaviourBlock(UIBehaviourBlock block)
+        {
+            if (block == null)
+            {
+                return;
+            }
+
+            UIBehaviourContext context = UIBehaviourContext.Create(this, block.trigger, null);
+            block.Execute(context, this, IsInteractable());
+        }
+
+        private void PollKeyboardBehaviours()
+        {
+            if (!Application.isPlaying || !isActiveAndEnabled)
+            {
+                return;
+            }
+
+            if (behaviours == null || behaviours.Count == 0)
+            {
+                return;
+            }
+
+            for (int i = 0; i < behaviours.Count; i++)
+            {
+                UIBehaviourBlock block = behaviours[i];
+                if (block == null || block.keyboardKey == KeyCode.None)
+                {
+                    continue;
+                }
+
+                if (!Input.GetKeyDown(block.keyboardKey))
+                {
+                    continue;
+                }
+
+                ExecuteBehaviourBlock(block);
+            }
+        }
+
         protected override void OnValidate()
         {
             base.OnValidate();

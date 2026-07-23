@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Project.UI;
 using static Project.UI.Editor.UIInspectorDraw;
+using Sirenix.OdinInspector.Editor;
 using UnityEditor;
 using UnityEngine;
 
@@ -335,6 +336,8 @@ namespace Project.UI.Editor
             DrawRelative(block, "enabled", "Enabled");
             DrawRelative(block, "allowWhenDisabled", "Allow When Disabled");
             DrawRelative(block, "cooldown", "Cooldown");
+            DrawOdinKeyCode(block.FindPropertyRelative("keyboardKey"), "Keyboard Key",
+                "Optional. If not None, this behaviour also runs on GetKeyDown of that key in Play Mode.");
 
             SerializedProperty entries = block.FindPropertyRelative("entries");
             if (entries == null || entries.arraySize == 0)
@@ -434,7 +437,14 @@ namespace Project.UI.Editor
             {
                 SerializedProperty block = blocks.GetArrayElementAtIndex(i);
                 SerializedProperty trigger = block.FindPropertyRelative("trigger");
-                labels[i] = trigger == null ? "Block " + (i + 1) : trigger.enumDisplayNames[trigger.enumValueIndex];
+                string label = trigger == null ? "Block " + (i + 1) : trigger.enumDisplayNames[trigger.enumValueIndex];
+                SerializedProperty key = block.FindPropertyRelative("keyboardKey");
+                if (key != null && key.enumValueIndex > 0)
+                {
+                    label += " [" + key.enumDisplayNames[key.enumValueIndex] + "]";
+                }
+
+                labels[i] = label;
             }
 
             return labels;
@@ -501,6 +511,25 @@ namespace Project.UI.Editor
             if (property != null)
             {
                 EditorGUILayout.PropertyField(property, new GUIContent(label, tooltip), includeChildren);
+            }
+        }
+
+        /// <summary>
+        /// Odin searchable enum dropdown (same UX as ShopButton KeyCode / Input System Key selectors).
+        /// </summary>
+        private static void DrawOdinKeyCode(SerializedProperty property, string label, string tooltip = null)
+        {
+            if (property == null)
+            {
+                return;
+            }
+
+            KeyCode current = (KeyCode)property.intValue;
+            EditorGUI.BeginChangeCheck();
+            KeyCode next = EnumSelector<KeyCode>.DrawEnumField(new GUIContent(label, tooltip), current);
+            if (EditorGUI.EndChangeCheck())
+            {
+                property.intValue = (int)next;
             }
         }
     }
