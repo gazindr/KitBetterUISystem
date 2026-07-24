@@ -742,11 +742,18 @@ namespace Project.UI.Editor
                 container.Show();
             }
 
+            if (NeutralButton("Show Isolated"))
+            {
+                container.ShowIsolated();
+            }
+
             if (NeutralButton("Runtime Hide"))
             {
                 container.Hide();
             }
 
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.BeginHorizontal();
             if (NeutralButton("Instant Show"))
             {
                 container.InstantShow();

@@ -156,6 +156,22 @@ namespace Project.UI
             StartShow(false, false);
         }
 
+        /// <summary>
+        /// Shows this container and hides every other currently open container.
+        /// Other Show calls are blocked until this container becomes Hidden,
+        /// then previously open containers are restored.
+        /// </summary>
+        public void ShowIsolated()
+        {
+            UIContainerIsolationManager.Begin(this);
+            if (state == UIContainerState.Visible || state == UIContainerState.Showing)
+            {
+                return;
+            }
+
+            StartShow(false, true);
+        }
+
         public void Hide()
         {
             StartHide(false);
@@ -207,6 +223,15 @@ namespace Project.UI
             if (TryGetRegistered(id, out container))
             {
                 container.Show();
+            }
+        }
+
+        public static void ShowIsolated(string id)
+        {
+            UIContainer container;
+            if (TryGetRegistered(id, out container))
+            {
+                container.ShowIsolated();
             }
         }
 
@@ -336,11 +361,13 @@ namespace Project.UI
             {
                 state = UIContainerState.Hidden;
                 UIContainerQueueManager.NotifyHidden(this);
+                UIContainerIsolationManager.NotifyHidden(this);
             }
         }
 
         private void OnDestroy()
         {
+            UIContainerIsolationManager.Remove(this);
             UIContainerQueueManager.Remove(this);
             UIRegistry.Unregister(this);
         }
@@ -370,6 +397,11 @@ namespace Project.UI
 
         private void StartShow(bool instant, bool fromQueue)
         {
+            if (UIContainerIsolationManager.IsBlocked(this))
+            {
+                return;
+            }
+
             if (!fromQueue && !instant)
             {
                 if (useInQueue)
@@ -575,6 +607,7 @@ namespace Project.UI
             }
 
             UIContainerQueueManager.NotifyHidden(this);
+            UIContainerIsolationManager.NotifyHidden(this);
             transitionRoutine = null;
 
             if (deactivateOnHidden)

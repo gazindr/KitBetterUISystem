@@ -65,6 +65,20 @@ namespace Project.UI
         {
             Containers.Clear();
         }
+
+        public static List<UIContainer> GetAll()
+        {
+            List<UIContainer> result = new List<UIContainer>(Containers.Count);
+            foreach (KeyValuePair<string, UIContainer> pair in Containers)
+            {
+                if (pair.Value != null)
+                {
+                    result.Add(pair.Value);
+                }
+            }
+
+            return result;
+        }
     }
 }
 

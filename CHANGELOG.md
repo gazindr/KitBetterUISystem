@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.3 - 2026-07-25
+
+- `UIContainer.ShowIsolated()` / `ShowIsolated(id)`: shows one container, hides all other open containers, blocks their Show until the isolated container hides, then restores the suppressed containers.
+- Debug inspector: `Show Isolated` button.
+
 ## 0.1.2 - 2026-07-24
 
 - `UIContainer.Show()`: ignore repeat Show while Visible/Showing (no re-animation) unless `useInQueue` is on.

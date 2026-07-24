@@ -31,6 +31,11 @@ namespace Project.UI
             UIContainer.Show(id);
         }
 
+        public void ShowIsolated(string id)
+        {
+            UIContainer.ShowIsolated(id);
+        }
+
         public void Hide(string id)
         {
             UIContainer.Hide(id);
