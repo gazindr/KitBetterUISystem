@@ -370,9 +370,20 @@ namespace Project.UI
 
         private void StartShow(bool instant, bool fromQueue)
         {
-            if (!fromQueue && !instant && UIContainerQueueManager.RequestShow(this))
+            if (!fromQueue && !instant)
             {
-                return;
+                if (useInQueue)
+                {
+                    if (UIContainerQueueManager.RequestShow(this))
+                    {
+                        return;
+                    }
+                }
+                else if (state == UIContainerState.Visible || state == UIContainerState.Showing)
+                {
+                    // Already visible / showing — ignore repeat Show until Hidden.
+                    return;
+                }
             }
 
             if (!gameObject.activeSelf)

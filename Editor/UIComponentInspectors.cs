@@ -131,9 +131,9 @@ namespace Project.UI.Editor
         {
             BeginSection("State Animations");
             int key = selectable.GetHashCode();
-            int stateTab = DrawToolbar(StateTabByTarget, key, StateTabs);
-
             SerializedProperty stateAnimations = serializedObject.FindProperty("stateAnimations");
+            int stateTab = DrawToolbarWithAnimationIndicators(StateTabByTarget, key, StateTabs, stateAnimations, StateProperties);
+
             if (stateAnimations != null)
             {
                 SerializedProperty state = stateAnimations.FindPropertyRelative(StateProperties[stateTab]);
@@ -628,9 +628,9 @@ namespace Project.UI.Editor
         {
             BeginSection("Container Animations");
             int key = container.GetHashCode();
-            int stateTab = DrawToolbar(ContainerStateTabByTarget, key, ContainerStateTabs);
-
             SerializedProperty animations = serializedObject.FindProperty("animations");
+            int stateTab = DrawToolbarWithAnimationIndicators(ContainerStateTabByTarget, key, ContainerStateTabs, animations, ContainerStateProperties);
+
             if (animations != null)
             {
                 SerializedProperty state = animations.FindPropertyRelative(ContainerStateProperties[stateTab]);
@@ -697,10 +697,11 @@ namespace Project.UI.Editor
             SerializedProperty animations = background.FindPropertyRelative("animations");
             if (animations != null)
             {
-                EditorGUILayout.Space(6f);
+                EditorGUILayout.Space(10f);
                 EditorGUILayout.LabelField("Background Animations", EditorStyles.boldLabel);
+                EditorGUILayout.Space(4f);
                 int key = target.GetHashCode();
-                int stateTab = DrawToolbar(BackgroundStateTabByTarget, key, ContainerStateTabs);
+                int stateTab = DrawToolbarWithAnimationIndicators(BackgroundStateTabByTarget, key, ContainerStateTabs, animations, ContainerStateProperties);
                 SerializedProperty state = animations.FindPropertyRelative(ContainerStateProperties[stateTab]);
                 DrawAnimationState(state, BackgroundAnimationTabByTarget, key);
             }
@@ -772,11 +773,14 @@ namespace Project.UI.Editor
 
     public static class UIInspectorDraw
     {
-        private const float ToolbarHeight = 26f;
-        private const float AnimationToolbarHeight = 30f;
+        private const float ToolbarHeight = 30f;
+        private const float AnimationToolbarHeight = 34f;
+        private const float IndicatorBarHeight = 3f;
+        private const float IndicatorGap = 2f;
+        private const float IndicatorTopPadding = 6f;
         private const float AnimationIconSize = 16f;
         private const float AnimationIconSpacing = 6f;
-        private const float ButtonHeight = 25f;
+        private const float ButtonHeight = 27f;
         private const float TwoColumnMinWidth = 760f;
         private const float FieldColumnLabelWidth = 86f;
 
@@ -789,6 +793,12 @@ namespace Project.UI.Editor
             "Scale.png",
             "Fade.png"
         };
+
+        private static readonly Color MoveColor = new Color(0.55f, 0.92f, 0.28f, 1f);
+        private static readonly Color RotateColor = new Color(1f, 0.55f, 0.12f, 1f);
+        private static readonly Color ScaleColor = new Color(0.9f, 0.2f, 0.45f, 1f);
+        private static readonly Color FadeColor = new Color(0.62f, 0.28f, 0.88f, 1f);
+        private static readonly Color[] AnimationColors = { MoveColor, RotateColor, ScaleColor, FadeColor };
 
         private static Texture2D[] animationIcons;
         private static GUIStyle toolbarStyle;
@@ -804,12 +814,55 @@ namespace Project.UI.Editor
 
         public static int DrawToolbar(Dictionary<int, int> tabs, int key, string[] labels)
         {
+            EditorGUILayout.Space(4f);
             int value = GetTab(tabs, key, labels.Length);
             Color previous = GUI.backgroundColor;
             GUI.backgroundColor = new Color(0.45f, 0.58f, 0.72f, 1f);
             value = GUILayout.Toolbar(value, labels, ToolbarStyle, GUILayout.Height(ToolbarHeight));
             GUI.backgroundColor = previous;
             tabs[key] = value;
+            EditorGUILayout.Space(6f);
+            return value;
+        }
+
+        public static int DrawToolbarWithAnimationIndicators(
+            Dictionary<int, int> tabs,
+            int key,
+            string[] labels,
+            SerializedProperty statesRoot,
+            string[] stateProperties)
+        {
+            EditorGUILayout.Space(6f);
+            int value = GetTab(tabs, key, labels.Length);
+            float totalHeight = IndicatorTopPadding + IndicatorBarHeight + 4f + ToolbarHeight;
+            Rect toolbarRect = GUILayoutUtility.GetRect(0f, totalHeight, GUILayout.ExpandWidth(true), GUILayout.Height(totalHeight));
+            float tabWidth = toolbarRect.width / labels.Length;
+            float buttonY = toolbarRect.y + IndicatorTopPadding + IndicatorBarHeight + 4f;
+
+            for (int i = 0; i < labels.Length; i++)
+            {
+                Rect tabRect = new Rect(toolbarRect.x + tabWidth * i + 1f, buttonY, tabWidth - 2f, ToolbarHeight);
+                bool selected = i == value;
+                Color previous = GUI.backgroundColor;
+                GUI.backgroundColor = selected ? new Color(0.34f, 0.5f, 0.72f, 1f) : new Color(0.36f, 0.43f, 0.5f, 1f);
+                if (GUI.Button(tabRect, labels[i], ToolbarStyle))
+                {
+                    value = i;
+                }
+
+                GUI.backgroundColor = previous;
+
+                if (statesRoot != null && stateProperties != null && i < stateProperties.Length)
+                {
+                    SerializedProperty state = statesRoot.FindPropertyRelative(stateProperties[i]);
+                    bool[] enabled = GetEnabledFlags(state);
+                    Rect indicatorRow = new Rect(tabRect.x + 4f, toolbarRect.y + IndicatorTopPadding, tabRect.width - 8f, IndicatorBarHeight);
+                    DrawStateIndicatorBars(indicatorRow, enabled);
+                }
+            }
+
+            tabs[key] = value;
+            EditorGUILayout.Space(8f);
             return value;
         }
 
@@ -821,41 +874,74 @@ namespace Project.UI.Editor
                 return;
             }
 
-            int animationTab = DrawAnimationToolbar(animationTabs, key);
+            int animationTab = DrawAnimationToolbar(animationTabs, key, state);
             SerializedProperty settings = state.FindPropertyRelative(AnimationProperties[animationTab]);
             DrawAnimationSettings(settings, (UIAnimationType)animationTab);
         }
 
-        private static int DrawAnimationToolbar(Dictionary<int, int> tabs, int key)
+        private static int DrawAnimationToolbar(Dictionary<int, int> tabs, int key, SerializedProperty state)
         {
+            EditorGUILayout.Space(4f);
             int value = GetTab(tabs, key, AnimationTabs.Length);
             Texture2D[] icons = GetAnimationIcons();
-            Rect toolbarRect = GUILayoutUtility.GetRect(0f, AnimationToolbarHeight, GUILayout.ExpandWidth(true), GUILayout.Height(AnimationToolbarHeight));
+            bool[] enabled = GetEnabledFlags(state);
+            float totalHeight = IndicatorTopPadding + IndicatorBarHeight + 3f + AnimationToolbarHeight;
+            Rect toolbarRect = GUILayoutUtility.GetRect(0f, totalHeight, GUILayout.ExpandWidth(true), GUILayout.Height(totalHeight));
             float tabWidth = toolbarRect.width / AnimationTabs.Length;
+            float buttonY = toolbarRect.y + IndicatorTopPadding + IndicatorBarHeight + 3f;
 
             for (int i = 0; i < AnimationTabs.Length; i++)
             {
-                Rect tabRect = new Rect(toolbarRect.x + tabWidth * i, toolbarRect.y, tabWidth, toolbarRect.height);
+                Rect tabRect = new Rect(toolbarRect.x + tabWidth * i + 1f, buttonY, tabWidth - 2f, AnimationToolbarHeight);
                 bool selected = i == value;
+                bool isEnabled = enabled != null && i < enabled.Length && enabled[i];
                 Color previous = GUI.backgroundColor;
-                GUI.backgroundColor = selected ? new Color(0.34f, 0.5f, 0.72f, 1f) : new Color(0.36f, 0.43f, 0.5f, 1f);
+                if (selected && isEnabled)
+                {
+                    Color tint = AnimationColors[i];
+                    GUI.backgroundColor = Color.Lerp(new Color(0.28f, 0.32f, 0.38f, 1f), tint, 0.35f);
+                }
+                else if (selected)
+                {
+                    GUI.backgroundColor = new Color(0.34f, 0.5f, 0.72f, 1f);
+                }
+                else
+                {
+                    GUI.backgroundColor = new Color(0.36f, 0.43f, 0.5f, 1f);
+                }
+
                 if (GUI.Button(tabRect, GUIContent.none, selected ? AnimationToolbarSelectedStyle : AnimationToolbarStyle))
                 {
                     value = i;
                 }
 
                 GUI.backgroundColor = previous;
-                DrawAnimationTabContent(tabRect, AnimationTabs[i], icons[i]);
+
+                if (isEnabled)
+                {
+                    Rect barRect = new Rect(tabRect.x + 3f, toolbarRect.y + IndicatorTopPadding, tabRect.width - 6f, IndicatorBarHeight);
+                    EditorGUI.DrawRect(barRect, AnimationColors[i]);
+                }
+
+                DrawAnimationTabContent(tabRect, AnimationTabs[i], icons[i], isEnabled ? AnimationColors[i] : (Color?)null, selected);
             }
 
             tabs[key] = value;
+            EditorGUILayout.Space(8f);
             return value;
         }
 
-        private static void DrawAnimationTabContent(Rect tabRect, string label, Texture2D icon)
+        private static void DrawAnimationTabContent(Rect tabRect, string label, Texture2D icon, Color? accent, bool selected)
         {
+            GUIStyle labelStyle = AnimationToolbarLabelStyle;
+            Color previous = labelStyle.normal.textColor;
+            if (accent.HasValue && selected)
+            {
+                labelStyle.normal.textColor = Color.Lerp(previous, accent.Value, 0.75f);
+            }
+
             GUIContent labelContent = new GUIContent(label);
-            Vector2 labelSize = AnimationToolbarLabelStyle.CalcSize(labelContent);
+            Vector2 labelSize = labelStyle.CalcSize(labelContent);
             float iconWidth = icon == null ? 0f : AnimationIconSize;
             float spacing = icon == null ? 0f : AnimationIconSpacing;
             float contentWidth = iconWidth + spacing + labelSize.x;
@@ -865,11 +951,76 @@ namespace Project.UI.Editor
             if (icon != null)
             {
                 Rect iconRect = new Rect(startX, centerY - AnimationIconSize * 0.5f, AnimationIconSize, AnimationIconSize);
-                GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit, true);
+                if (accent.HasValue)
+                {
+                    Color previousContent = GUI.color;
+                    GUI.color = Color.Lerp(Color.white, accent.Value, selected ? 0.55f : 0.35f);
+                    GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit, true);
+                    GUI.color = previousContent;
+                }
+                else
+                {
+                    GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit, true);
+                }
             }
 
             Rect labelRect = new Rect(startX + iconWidth + spacing, tabRect.y, labelSize.x, tabRect.height);
-            GUI.Label(labelRect, labelContent, AnimationToolbarLabelStyle);
+            GUI.Label(labelRect, labelContent, labelStyle);
+            labelStyle.normal.textColor = previous;
+        }
+
+        private static bool[] GetEnabledFlags(SerializedProperty state)
+        {
+            bool[] enabled = new bool[AnimationProperties.Length];
+            if (state == null)
+            {
+                return enabled;
+            }
+
+            for (int i = 0; i < AnimationProperties.Length; i++)
+            {
+                SerializedProperty settings = state.FindPropertyRelative(AnimationProperties[i]);
+                SerializedProperty enabledProp = settings == null ? null : settings.FindPropertyRelative("enabled");
+                enabled[i] = enabledProp != null && enabledProp.boolValue;
+            }
+
+            return enabled;
+        }
+
+        private static void DrawStateIndicatorBars(Rect row, bool[] enabled)
+        {
+            if (enabled == null)
+            {
+                return;
+            }
+
+            int count = 0;
+            for (int i = 0; i < enabled.Length; i++)
+            {
+                if (enabled[i])
+                {
+                    count++;
+                }
+            }
+
+            if (count == 0)
+            {
+                return;
+            }
+
+            float totalGaps = IndicatorGap * (count - 1);
+            float barWidth = (row.width - totalGaps) / count;
+            float x = row.x;
+            for (int i = 0; i < enabled.Length; i++)
+            {
+                if (!enabled[i])
+                {
+                    continue;
+                }
+
+                EditorGUI.DrawRect(new Rect(x, row.y, barWidth, row.height), AnimationColors[i]);
+                x += barWidth + IndicatorGap;
+            }
         }
 
         private static Texture2D[] GetAnimationIcons()
@@ -927,8 +1078,15 @@ namespace Project.UI.Editor
             }
 
             BeginInnerSection(type + " Animation");
-            DrawRelative(settings, "enabled", type + " Enabled");
             SerializedProperty enabled = settings.FindPropertyRelative("enabled");
+            Color previousBg = GUI.backgroundColor;
+            if (enabled != null && enabled.boolValue)
+            {
+                GUI.backgroundColor = Color.Lerp(GUI.backgroundColor, AnimationColors[(int)type], 0.45f);
+            }
+
+            DrawRelative(settings, "enabled", type + " Enabled");
+            GUI.backgroundColor = previousBg;
             if (enabled == null || !enabled.boolValue)
             {
                 EditorGUILayout.HelpBox(type + " animation is disabled.", MessageType.None);
@@ -1071,11 +1229,11 @@ namespace Project.UI.Editor
 
         public static void DrawTitle(string title, string state)
         {
-            EditorGUILayout.Space(2f);
+            EditorGUILayout.Space(4f);
             EditorGUILayout.BeginVertical(SectionStyle);
-            EditorGUILayout.LabelField(title, state, TitleStyle, GUILayout.Height(22f));
+            EditorGUILayout.LabelField(title, state, TitleStyle, GUILayout.Height(24f));
             EditorGUILayout.EndVertical();
-            EditorGUILayout.Space(2f);
+            EditorGUILayout.Space(6f);
         }
 
         public static bool GreenButton(string label, params GUILayoutOption[] options)
@@ -1104,22 +1262,24 @@ namespace Project.UI.Editor
 
         public static void BeginSection(string title)
         {
-            EditorGUILayout.Space(4f);
+            EditorGUILayout.Space(8f);
             Color previous = GUI.backgroundColor;
             GUI.backgroundColor = new Color(0.74f, 0.74f, 0.74f, 1f);
             EditorGUILayout.BeginVertical(SectionStyle);
             GUI.backgroundColor = previous;
             EditorGUILayout.LabelField(title, HeaderStyle);
+            EditorGUILayout.Space(4f);
         }
 
         public static void BeginInnerSection(string title)
         {
-            EditorGUILayout.Space(4f);
+            EditorGUILayout.Space(6f);
             Color previous = GUI.backgroundColor;
             GUI.backgroundColor = new Color(0.62f, 0.62f, 0.62f, 1f);
             EditorGUILayout.BeginVertical(InnerSectionStyle);
             GUI.backgroundColor = previous;
             EditorGUILayout.LabelField(title, SubHeaderStyle);
+            EditorGUILayout.Space(2f);
         }
 
         public static void EndSection()
@@ -1297,8 +1457,8 @@ namespace Project.UI.Editor
                 {
                     sectionStyle = new GUIStyle(EditorStyles.helpBox)
                     {
-                        padding = new RectOffset(8, 8, 7, 8),
-                        margin = new RectOffset(0, 0, 5, 5)
+                        padding = new RectOffset(12, 12, 10, 12),
+                        margin = new RectOffset(0, 0, 6, 8)
                     };
                 }
 
@@ -1314,8 +1474,8 @@ namespace Project.UI.Editor
                 {
                     innerSectionStyle = new GUIStyle(EditorStyles.helpBox)
                     {
-                        padding = new RectOffset(7, 7, 6, 7),
-                        margin = new RectOffset(0, 0, 4, 4)
+                        padding = new RectOffset(10, 10, 8, 10),
+                        margin = new RectOffset(0, 0, 5, 5)
                     };
                 }
 

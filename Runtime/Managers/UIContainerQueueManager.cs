@@ -10,6 +10,10 @@ namespace Project.UI
         private static readonly Dictionary<string, QueueState> QueueStates = new Dictionary<string, QueueState>();
         private static UIContainerQueueRunner runner;
 
+        /// <summary>
+        /// Returns true when Show should be deferred (queued). Returns false when the caller may start Show now.
+        /// Duplicate Show calls for the same container are allowed and each becomes a separate queue entry.
+        /// </summary>
         public static bool RequestShow(UIContainer container)
         {
             if (container == null || !container.UseInQueue)
@@ -18,9 +22,12 @@ namespace Project.UI
             }
 
             QueueState state = GetState(container.QueueGroup);
+
+            // Already showing / pending this container — enqueue another full show cycle.
             if (state.active == container)
             {
-                return state.pendingShow != null;
+                state.queue.Enqueue(container);
+                return true;
             }
 
             if (state.active == null || (state.pendingShow == null && state.active.State == UIContainerState.Hidden))
@@ -30,11 +37,8 @@ namespace Project.UI
                 return false;
             }
 
-            if (!Contains(state.queue, container))
-            {
-                state.queue.Enqueue(container);
-            }
-
+            // Another container is active — enqueue (duplicates allowed).
+            state.queue.Enqueue(container);
             return true;
         }
 
@@ -69,7 +73,7 @@ namespace Project.UI
                 state.active = null;
             }
 
-            if (Contains(state.queue, container))
+            if (state.queue.Count > 0)
             {
                 Queue<UIContainer> rebuilt = new Queue<UIContainer>();
                 while (state.queue.Count > 0)
@@ -189,19 +193,6 @@ namespace Project.UI
             Object.DontDestroyOnLoad(runnerObject);
             runner = runnerObject.AddComponent<UIContainerQueueRunner>();
             return runner;
-        }
-
-        private static bool Contains(Queue<UIContainer> queue, UIContainer container)
-        {
-            foreach (UIContainer queued in queue)
-            {
-                if (queued == container)
-                {
-                    return true;
-                }
-            }
-
-            return false;
         }
 
         private sealed class QueueState
