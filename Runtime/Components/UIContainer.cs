@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Events;
@@ -68,10 +69,6 @@ namespace Project.UI
         [HideLabel]
         public UIContainerAnimationProfile animations = new UIContainerAnimationProfile();
 
-        [TabGroup("Animations")]
-        [Tooltip("Optional animation preset. Changes from the preset are marked with * until Save.")]
-        public UIContainerAnimationPreset animationPreset;
-
         [TabGroup("Background")]
         [HideLabel]
         public UIBackgroundSettings backgroundSettings = new UIBackgroundSettings();
@@ -91,13 +88,13 @@ namespace Project.UI
         [TabGroup("Callbacks")]
         public UIBoolEvent visibilityChanged = new UIBoolEvent();
 
-        [TabGroup("Presets")]
-        [InlineEditor(InlineEditorObjectFieldModes.Boxed)]
+        /// <summary>
+        /// Full component preset (settings + animations + background). Source of default values.
+        /// </summary>
         public UIContainerPreset preset;
 
-        [TabGroup("Presets")]
-        [HideLabel]
-        public UIPresetApplyMask presetApplyMask = new UIPresetApplyMask();
+        [SerializeField]
+        private List<string> overriddenPaths = new List<string>();
 
         [SerializeField]
         [HideInInspector]
@@ -114,6 +111,17 @@ namespace Project.UI
         public event Action<UIContainer> HideStarted;
         public event Action<UIContainer> Hidden;
         public event Action<UIContainer, bool> VisibilityChanged;
+
+        public UIContainerPreset Preset
+        {
+            get { return preset; }
+            set { preset = value; }
+        }
+
+        public List<string> OverriddenPaths
+        {
+            get { return overriddenPaths; }
+        }
 
         [TabGroup("Debug")]
         [ReadOnly]
@@ -326,59 +334,106 @@ namespace Project.UI
             StartShow(false, true);
         }
 
-        public void ApplyContainerPresetData(UIContainerPreset sourcePreset, UIPresetApplyMask mask)
+        public void ApplyContainerPresetData(UIContainerPreset sourcePreset)
+        {
+            ApplyContainerPresetData(sourcePreset, true);
+        }
+
+        public void ApplyContainerPresetData(UIContainerPreset sourcePreset, bool clearOverrides)
         {
             if (sourcePreset == null)
             {
                 return;
             }
 
-            if (mask == null)
+            category = sourcePreset.category;
+            autoRegister = sourcePreset.autoRegister;
+            registerOnAwake = sourcePreset.registerOnAwake;
+            startupMode = sourcePreset.startupMode;
+            useInQueue = sourcePreset.useInQueue;
+            queueGroup = sourcePreset.queueGroup;
+            queueShowDelay = Mathf.Max(0f, sourcePreset.queueShowDelay);
+            useAutoHide = sourcePreset.useAutoHide;
+            autoHideDelay = Mathf.Max(0f, sourcePreset.autoHideDelay);
+            deactivateOnHidden = sourcePreset.deactivateOnHidden;
+            muteUISound = sourcePreset.muteUISound;
+            customShowSound = sourcePreset.customShowSound;
+            customHideSound = sourcePreset.customHideSound;
+
+            if (animations == null)
             {
-                mask = new UIPresetApplyMask();
+                animations = new UIContainerAnimationProfile();
             }
 
-            if (mask.ShouldApplyAnimations)
+            animations.CopyFrom(sourcePreset.animations);
+
+            if (backgroundSettings == null)
             {
-                animations.CopyFrom(sourcePreset.animations);
+                backgroundSettings = new UIBackgroundSettings();
             }
 
-            if (mask.ShouldApplySettings)
+            backgroundSettings.CopyFrom(sourcePreset.backgroundSettings);
+
+            if (clearOverrides)
             {
-                category = sourcePreset.category;
-                autoRegister = sourcePreset.autoRegister;
-                registerOnAwake = sourcePreset.registerOnAwake;
-                useInQueue = sourcePreset.useInQueue;
-                queueGroup = sourcePreset.queueGroup;
-                queueShowDelay = Mathf.Max(0f, sourcePreset.queueShowDelay);
-                useAutoHide = sourcePreset.useAutoHide;
-                autoHideDelay = Mathf.Max(0f, sourcePreset.autoHideDelay);
+                UIPresetOverrideUtility.ClearOverrides(overriddenPaths);
+            }
+        }
+
+        public void ApplyPresetKeepingOverrides()
+        {
+            if (preset == null)
+            {
+                return;
             }
 
-            if (mask.ShouldApplyStartup)
+            if (overriddenPaths == null || overriddenPaths.Count == 0)
             {
-                startupMode = sourcePreset.startupMode;
+                ApplyContainerPresetData(preset, false);
+                return;
             }
 
-            if (mask.ShouldApplyBackground)
-            {
-                backgroundSettings.CopyFrom(sourcePreset.backgroundSettings);
-            }
+#if UNITY_EDITOR
+            UIPresetOverrideSync.ApplyNonOverridden(this, preset, overriddenPaths);
+#else
+            ApplyContainerPresetData(preset, false);
+#endif
+        }
 
-            if (mask.ShouldApplyCallbacks)
-            {
-                onShow = sourcePreset.onShow;
-                onVisible = sourcePreset.onVisible;
-                onHide = sourcePreset.onHide;
-                onHidden = sourcePreset.onHidden;
-                visibilityChanged = sourcePreset.visibilityChanged;
-            }
+        public bool IsPathOverridden(string path)
+        {
+            return UIPresetOverrideUtility.IsOverridden(overriddenPaths, path);
+        }
+
+        public void SetPathOverridden(string path, bool isOverride)
+        {
+            UIPresetOverrideUtility.SetOverride(overriddenPaths, path, isOverride);
         }
 
         private void Reset()
         {
             id = name;
             animations = UIAnimationDefaults.CreateContainerProfile();
+            backgroundSettings = new UIBackgroundSettings();
+            overriddenPaths = new List<string>();
+
+            UIContainerPreset defaultPreset = null;
+            UISystemDefaults defaults = UISystemDefaults.Instance;
+            if (defaults != null)
+            {
+                defaultPreset = defaults.defaultContainerPreset;
+            }
+
+            if (defaultPreset == null)
+            {
+                defaultPreset = Resources.Load<UIContainerPreset>("Default-UIContainerPreset");
+            }
+
+            if (defaultPreset != null)
+            {
+                preset = defaultPreset;
+                ApplyContainerPresetData(defaultPreset, true);
+            }
         }
 
         private void Awake()
@@ -875,17 +930,71 @@ namespace Project.UI
         private void ResetAnimations()
         {
             animations = UIAnimationDefaults.CreateContainerProfile();
+            if (preset != null && preset.animations != null)
+            {
+                animations.CopyFrom(preset.animations);
+            }
+
+            if (overriddenPaths != null && overriddenPaths.Count > 0)
+            {
+                List<string> keep = new List<string>();
+                for (int i = 0; i < overriddenPaths.Count; i++)
+                {
+                    string path = overriddenPaths[i];
+                    if (path != null && !path.StartsWith("animations.", StringComparison.Ordinal))
+                    {
+                        keep.Add(path);
+                    }
+                }
+
+                overriddenPaths.Clear();
+                overriddenPaths.AddRange(keep);
+            }
         }
 
-        [TabGroup("Presets")]
-        [Button(ButtonSizes.Medium)]
-        [GUIColor(0.4f, 0.7f, 1f)]
-        private void ApplyPreset()
+        public void ApplyPresetFromInspector()
         {
             if (preset != null)
             {
-                preset.ApplyTo(this, presetApplyMask);
+                ApplyContainerPresetData(preset, true);
             }
+        }
+
+        public void SaveAllToPreset()
+        {
+            if (preset == null)
+            {
+                return;
+            }
+
+            preset.category = category;
+            preset.autoRegister = autoRegister;
+            preset.registerOnAwake = registerOnAwake;
+            preset.startupMode = startupMode;
+            preset.useInQueue = useInQueue;
+            preset.queueGroup = queueGroup;
+            preset.queueShowDelay = queueShowDelay;
+            preset.useAutoHide = useAutoHide;
+            preset.autoHideDelay = autoHideDelay;
+            preset.deactivateOnHidden = deactivateOnHidden;
+            preset.muteUISound = muteUISound;
+            preset.customShowSound = customShowSound;
+            preset.customHideSound = customHideSound;
+
+            if (preset.animations == null)
+            {
+                preset.animations = new UIContainerAnimationProfile();
+            }
+
+            preset.animations.CopyFrom(animations);
+
+            if (preset.backgroundSettings == null)
+            {
+                preset.backgroundSettings = new UIBackgroundSettings();
+            }
+
+            preset.backgroundSettings.CopyFrom(backgroundSettings);
+            UIPresetOverrideUtility.ClearOverrides(overriddenPaths);
         }
 
 #if UNITY_EDITOR

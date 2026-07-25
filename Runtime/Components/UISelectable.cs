@@ -460,7 +460,7 @@ namespace Project.UI
             stateAnimations = UIAnimationDefaults.CreateButtonProfile();
         }
 
-        private static List<UIBehaviourBlock> CloneBehaviourBlocks(List<UIBehaviourBlock> source, bool includeCallbacks)
+        protected static List<UIBehaviourBlock> CloneBehaviourBlocks(List<UIBehaviourBlock> source, bool includeCallbacks)
         {
             List<UIBehaviourBlock> result = new List<UIBehaviourBlock>();
             if (source == null)

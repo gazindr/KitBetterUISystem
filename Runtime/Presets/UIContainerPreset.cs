@@ -38,6 +38,22 @@ namespace Project.UI
         [ShowIf(nameof(useAutoHide))]
         public float autoHideDelay = 1f;
 
+        [TabGroup("Settings")]
+        [Tooltip("После Hide/InstantHide отключать GameObject (как Doozy InstantHide).")]
+        public bool deactivateOnHidden;
+
+        [TabGroup("Settings")]
+        [Tooltip("If enabled, this container never plays Show/Hide SFX.")]
+        public bool muteUISound;
+
+        [TabGroup("Settings")]
+        [ShowIf("@!muteUISound")]
+        public AudioClip customShowSound;
+
+        [TabGroup("Settings")]
+        [ShowIf("@!muteUISound")]
+        public AudioClip customHideSound;
+
         [TabGroup("Animations")]
         [HideLabel]
         public UIContainerAnimationProfile animations = new UIContainerAnimationProfile();
@@ -65,7 +81,7 @@ namespace Project.UI
         {
             if (container != null)
             {
-                container.ApplyContainerPresetData(this, ResolveMask(overrideMask));
+                container.ApplyContainerPresetData(this, true);
             }
         }
 

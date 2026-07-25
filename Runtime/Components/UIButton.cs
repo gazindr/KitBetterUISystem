@@ -1,4 +1,5 @@
-﻿using Sirenix.OdinInspector;
+﻿using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
@@ -21,27 +22,51 @@ namespace Project.UI
         [Tooltip("Optional clip that overrides the global UI click sound from SFXManager.")]
         public AudioClip customClickSound;
 
-        [TabGroup("Animations")]
-        [Tooltip("Optional animation preset. Changes from the preset are marked with * until Save.")]
-        public UIButtonAnimationPreset animationPreset;
-
         [TabGroup("Callbacks")]
         public UnityEvent onClick = new UnityEvent();
 
         [TabGroup("Presets")]
-        [InlineEditor(InlineEditorObjectFieldModes.Boxed)]
         public UIButtonPreset preset;
 
-        [TabGroup("Presets")]
-        [HideLabel]
-        public UIPresetApplyMask presetApplyMask = new UIPresetApplyMask();
+        [SerializeField]
+        private List<string> overriddenPaths = new List<string>();
 
         private float lastClickTime = -999999f;
+
+        public UIButtonPreset Preset
+        {
+            get { return preset; }
+            set { preset = value; }
+        }
+
+        public List<string> OverriddenPaths
+        {
+            get { return overriddenPaths; }
+        }
 
         protected override void Reset()
         {
             base.Reset();
             stateAnimations = UIAnimationDefaults.CreateButtonProfile();
+            overriddenPaths = new List<string>();
+
+            UIButtonPreset defaultPreset = null;
+            UISystemDefaults defaults = UISystemDefaults.Instance;
+            if (defaults != null)
+            {
+                defaultPreset = defaults.defaultButtonPreset;
+            }
+
+            if (defaultPreset == null)
+            {
+                defaultPreset = Resources.Load<UIButtonPreset>("Default-UIButtonPreset");
+            }
+
+            if (defaultPreset != null)
+            {
+                preset = defaultPreset;
+                ApplyButtonPresetData(defaultPreset, true);
+            }
         }
 
         public void Click()
@@ -122,43 +147,118 @@ namespace Project.UI
             }
         }
 
-        public void ApplyButtonPresetData(UIButtonPreset sourcePreset, UIPresetApplyMask mask)
+        public void ApplyButtonPresetData(UIButtonPreset sourcePreset)
+        {
+            ApplyButtonPresetData(sourcePreset, true);
+        }
+
+        public void ApplyButtonPresetData(UIButtonPreset sourcePreset, bool clearOverrides)
         {
             if (sourcePreset == null)
             {
                 return;
             }
 
-            ApplySelectablePresetData(sourcePreset.stateAnimations, sourcePreset.behaviours, mask);
+            interactable = sourcePreset.interactable;
+            doubleClickInterval = sourcePreset.doubleClickInterval;
+            longClickDuration = sourcePreset.longClickDuration;
+            clickCooldown = sourcePreset.clickCooldown;
+            blockPointerWhenDisabled = sourcePreset.blockPointerWhenDisabled;
+            invokeOnSubmit = sourcePreset.invokeOnSubmit;
+            useInQueue = sourcePreset.useInQueue;
+            queueGroup = sourcePreset.queueGroup;
+            queueReleaseDelay = sourcePreset.queueReleaseDelay;
+            muteUISound = sourcePreset.muteUISound;
+            customClickSound = sourcePreset.customClickSound;
 
-            if (mask == null || mask.ShouldApplySettings)
+            if (stateAnimations == null)
             {
-                interactable = sourcePreset.interactable;
-                doubleClickInterval = sourcePreset.doubleClickInterval;
-                longClickDuration = sourcePreset.longClickDuration;
-                clickCooldown = sourcePreset.clickCooldown;
-                blockPointerWhenDisabled = sourcePreset.blockPointerWhenDisabled;
-                invokeOnSubmit = sourcePreset.invokeOnSubmit;
-                useInQueue = sourcePreset.useInQueue;
-                queueGroup = sourcePreset.queueGroup;
-                queueReleaseDelay = sourcePreset.queueReleaseDelay;
+                stateAnimations = new UISelectableAnimationProfile();
             }
 
-            if (mask != null && mask.ShouldApplyCallbacks)
+            stateAnimations.CopyFrom(sourcePreset.stateAnimations);
+
+            if (sourcePreset.behaviours != null)
             {
-                onClick = sourcePreset.onClick;
+                behaviours = CloneBehaviourBlocks(sourcePreset.behaviours, false);
+            }
+
+            if (clearOverrides)
+            {
+                UIPresetOverrideUtility.ClearOverrides(overriddenPaths);
             }
         }
 
-        [TabGroup("Presets")]
-        [Button(ButtonSizes.Medium)]
-        [GUIColor(0.4f, 0.7f, 1f)]
-        private void ApplyPreset()
+        public void ApplyPresetKeepingOverrides()
+        {
+            if (preset == null)
+            {
+                return;
+            }
+
+            if (overriddenPaths == null || overriddenPaths.Count == 0)
+            {
+                ApplyButtonPresetData(preset, false);
+                return;
+            }
+
+#if UNITY_EDITOR
+            UIPresetOverrideSync.ApplyNonOverridden(this, preset, overriddenPaths);
+#else
+            ApplyButtonPresetData(preset, false);
+#endif
+        }
+
+        public bool IsPathOverridden(string path)
+        {
+            return UIPresetOverrideUtility.IsOverridden(overriddenPaths, path);
+        }
+
+        public void SetPathOverridden(string path, bool isOverride)
+        {
+            UIPresetOverrideUtility.SetOverride(overriddenPaths, path, isOverride);
+        }
+
+        public void ApplyPresetFromInspector()
         {
             if (preset != null)
             {
-                preset.ApplyTo(this, presetApplyMask);
+                ApplyButtonPresetData(preset, true);
             }
+        }
+
+        public void SaveAllToPreset()
+        {
+            if (preset == null)
+            {
+                return;
+            }
+
+            preset.interactable = interactable;
+            preset.doubleClickInterval = doubleClickInterval;
+            preset.longClickDuration = longClickDuration;
+            preset.clickCooldown = clickCooldown;
+            preset.blockPointerWhenDisabled = blockPointerWhenDisabled;
+            preset.invokeOnSubmit = invokeOnSubmit;
+            preset.useInQueue = useInQueue;
+            preset.queueGroup = queueGroup;
+            preset.queueReleaseDelay = queueReleaseDelay;
+            preset.muteUISound = muteUISound;
+            preset.customClickSound = customClickSound;
+
+            if (preset.stateAnimations == null)
+            {
+                preset.stateAnimations = new UISelectableAnimationProfile();
+            }
+
+            preset.stateAnimations.CopyFrom(stateAnimations);
+
+            if (behaviours != null)
+            {
+                preset.behaviours = CloneBehaviourBlocks(behaviours, false);
+            }
+
+            UIPresetOverrideUtility.ClearOverrides(overriddenPaths);
         }
 
         private bool CanAcceptClick()
@@ -177,6 +277,3 @@ namespace Project.UI
         }
     }
 }
-
-
-

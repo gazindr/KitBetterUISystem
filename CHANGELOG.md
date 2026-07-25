@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.7 - 2026-07-25
+
+- Full preset + per-field overrides for `UIContainer` / `UIButton`: `overriddenPaths`, orange tint in inspector, RMB Apply to Preset / Revert to Preset.
+- Presets tab: Preset + dirty `*`, Save, `+` (no Apply Mask). Animation-only preset bar removed from Animations tab.
+- Assigning a preset does a full apply and clears overrides; editing a field marks an override; changing the preset asset syncs non-overridden fields to instances.
+- `UISystemDefaults` + Resources defaults (`Default-UIContainerPreset`, `Default-UIButtonPreset`) applied in `Reset()`.
+- UnityEvents are not auto-copied from presets (scene bindings stay intact).
+
 ## 0.1.6 - 2026-07-25
 
 - Inspector: wider labels (no clipping), Values From/To stacked to prevent overflow.

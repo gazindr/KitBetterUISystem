@@ -37,6 +37,14 @@ namespace Project.UI
         [ShowIf(nameof(useInQueue))]
         public float queueReleaseDelay = 0.05f;
 
+        [TabGroup("Settings")]
+        [Tooltip("If enabled, this button never plays click SFX.")]
+        public bool muteUISound;
+
+        [TabGroup("Settings")]
+        [ShowIf("@!muteUISound")]
+        public AudioClip customClickSound;
+
         [TabGroup("Animations")]
         [HideLabel]
         public UISelectableAnimationProfile stateAnimations = new UISelectableAnimationProfile();
@@ -52,11 +60,8 @@ namespace Project.UI
         {
             if (button != null)
             {
-                button.ApplyButtonPresetData(this, ResolveMask(overrideMask));
+                button.ApplyButtonPresetData(this, true);
             }
         }
     }
 }
-
-
-

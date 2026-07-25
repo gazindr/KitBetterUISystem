@@ -30,6 +30,12 @@ namespace Project.UI.Editor
             serializedObject.Update();
 
             UISelectable selectable = (UISelectable)target;
+            UIButton button = selectable as UIButton;
+            if (button != null)
+            {
+                UIPresetOverrideDrawer.Begin(button, button.preset, button.OverriddenPaths, serializedObject);
+            }
+
             int key = selectable.GetHashCode();
             DrawTitle(selectable.GetType().Name, selectable.CurrentState.ToString());
             int mainTab = DrawToolbar(MainTabByTarget, key, MainTabs);
@@ -48,7 +54,7 @@ namespace Project.UI.Editor
                     DrawBehaviours(selectable);
                     break;
                 case 3:
-                    DrawPresets();
+                    DrawPresets(selectable);
                     break;
                 default:
                     DrawSelectableDebug(selectable);
@@ -56,6 +62,10 @@ namespace Project.UI.Editor
             }
 
             serializedObject.ApplyModifiedProperties();
+            if (button != null)
+            {
+                UIPresetOverrideDrawer.End();
+            }
         }
 
         private void DrawSelectableSettings(UISelectable selectable)
@@ -136,12 +146,6 @@ namespace Project.UI.Editor
         private void DrawStateAnimations(UISelectable selectable)
         {
             BeginSection("State Animations");
-            UIButton button = selectable as UIButton;
-            if (button != null)
-            {
-                UIAnimationPresetDrawer.DrawButtonPresetBar(serializedObject, button);
-            }
-
             int key = selectable.GetHashCode();
             SerializedProperty stateAnimations = serializedObject.FindProperty("stateAnimations");
             int stateTab = DrawToolbarWithAnimationIndicators(StateTabByTarget, key, StateTabs, stateAnimations, StateProperties);
@@ -408,11 +412,20 @@ namespace Project.UI.Editor
             }
         }
 
-        private void DrawPresets()
+        private void DrawPresets(UISelectable selectable)
         {
             BeginSection("Presets");
-            DrawProperty("preset", "Preset");
-            DrawProperty("presetApplyMask", "Apply Mask", true);
+            UIButton button = selectable as UIButton;
+            if (button != null)
+            {
+                UIPresetOverrideDrawer.DrawButtonPresetsTab(serializedObject, button);
+            }
+            else
+            {
+                DrawProperty("preset", "Preset");
+                DrawProperty("presetApplyMask", "Apply Mask", true);
+            }
+
             EndSection();
         }
 
@@ -513,7 +526,14 @@ namespace Project.UI.Editor
             SerializedProperty property = serializedObject.FindProperty(propertyName);
             if (property != null)
             {
-                EditorGUILayout.PropertyField(property, new GUIContent(label), includeChildren);
+                if (UIPresetOverrideDrawer.IsActive)
+                {
+                    UIPresetOverrideDrawer.DrawProperty(property, label, includeChildren);
+                }
+                else
+                {
+                    EditorGUILayout.PropertyField(property, new GUIContent(label), includeChildren);
+                }
             }
         }
 
@@ -522,7 +542,14 @@ namespace Project.UI.Editor
             SerializedProperty property = root.FindPropertyRelative(propertyName);
             if (property != null)
             {
-                EditorGUILayout.PropertyField(property, new GUIContent(label, tooltip), includeChildren);
+                if (UIPresetOverrideDrawer.IsActive)
+                {
+                    UIPresetOverrideDrawer.DrawProperty(property, label, includeChildren);
+                }
+                else
+                {
+                    EditorGUILayout.PropertyField(property, new GUIContent(label, tooltip), includeChildren);
+                }
             }
         }
 
@@ -565,6 +592,7 @@ namespace Project.UI.Editor
             serializedObject.Update();
 
             UIContainer container = (UIContainer)target;
+            UIPresetOverrideDrawer.Begin(container, container.preset, container.OverriddenPaths, serializedObject);
             int key = container.GetHashCode();
             DrawTitle("UIContainer", container.State.ToString());
             int mainTab = DrawToolbar(MainTabByTarget, key, MainTabs);
@@ -584,7 +612,7 @@ namespace Project.UI.Editor
                     DrawCallbacks();
                     break;
                 case 4:
-                    DrawPresets();
+                    DrawPresets(container);
                     break;
                 default:
                     DrawDebug(container);
@@ -592,6 +620,7 @@ namespace Project.UI.Editor
             }
 
             serializedObject.ApplyModifiedProperties();
+            UIPresetOverrideDrawer.End();
         }
 
         private void DrawSettings()
@@ -648,8 +677,6 @@ namespace Project.UI.Editor
         private void DrawAnimations(UIContainer container)
         {
             BeginSection("Container Animations");
-            UIAnimationPresetDrawer.DrawContainerPresetBar(serializedObject, container);
-
             int key = container.GetHashCode();
             SerializedProperty animations = serializedObject.FindProperty("animations");
             int stateTab = DrawToolbarWithAnimationIndicators(ContainerStateTabByTarget, key, ContainerStateTabs, animations, ContainerStateProperties);
@@ -743,11 +770,10 @@ namespace Project.UI.Editor
             EndSection();
         }
 
-        private void DrawPresets()
+        private void DrawPresets(UIContainer container)
         {
             BeginSection("Presets");
-            DrawProperty("preset", "Preset");
-            DrawProperty("presetApplyMask", "Apply Mask", true);
+            UIPresetOverrideDrawer.DrawContainerPresetsTab(serializedObject, container);
             EndSection();
         }
 
@@ -796,7 +822,14 @@ namespace Project.UI.Editor
             SerializedProperty property = serializedObject.FindProperty(propertyName);
             if (property != null)
             {
-                EditorGUILayout.PropertyField(property, new GUIContent(label), includeChildren);
+                if (UIPresetOverrideDrawer.IsActive)
+                {
+                    UIPresetOverrideDrawer.DrawProperty(property, label, includeChildren);
+                }
+                else
+                {
+                    EditorGUILayout.PropertyField(property, new GUIContent(label), includeChildren);
+                }
             }
         }
     }
@@ -1306,14 +1339,22 @@ namespace Project.UI.Editor
 
         private static void DrawProperty(SerializedProperty property, string label, bool includeChildren = false)
         {
-            if (property != null)
+            if (property == null)
             {
-                float previousLabelWidth = EditorGUIUtility.labelWidth;
-                float needed = Mathf.Clamp(EditorStyles.label.CalcSize(new GUIContent(label)).x + 18f, FieldColumnLabelWidth, 220f);
-                EditorGUIUtility.labelWidth = needed;
-                EditorGUILayout.PropertyField(property, new GUIContent(label), includeChildren);
-                EditorGUIUtility.labelWidth = previousLabelWidth;
+                return;
             }
+
+            if (UIPresetOverrideDrawer.IsActive)
+            {
+                UIPresetOverrideDrawer.DrawProperty(property, label, includeChildren);
+                return;
+            }
+
+            float previousLabelWidth = EditorGUIUtility.labelWidth;
+            float needed = Mathf.Clamp(EditorStyles.label.CalcSize(new GUIContent(label)).x + 18f, FieldColumnLabelWidth, 220f);
+            EditorGUIUtility.labelWidth = needed;
+            EditorGUILayout.PropertyField(property, new GUIContent(label), includeChildren);
+            EditorGUIUtility.labelWidth = previousLabelWidth;
         }
 
         public static void DrawTitle(string title, string state)
