@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.8 - 2026-07-25
+
+- Inspector RMB on UIContainer/UIButton fields: **Apply to Preset** / **Revert to Preset** via Unity `contextualPropertyMenu` (Unity's own PropertyField menu was swallowing the old ContextClick handler).
+- Clearer orange override wash + left bar on overridden fields.
+
 ## 0.1.7 - 2026-07-25
 
 - Full preset + per-field overrides for `UIContainer` / `UIButton`: `overriddenPaths`, orange tint in inspector, RMB Apply to Preset / Revert to Preset.

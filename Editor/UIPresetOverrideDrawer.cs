@@ -8,6 +8,7 @@ namespace Project.UI.Editor
     /// <summary>
     /// Presets tab bar (dirty *, Save, +) and overridable property drawing (orange + RMB Apply/Revert).
     /// </summary>
+    [InitializeOnLoad]
     public static class UIPresetOverrideDrawer
     {
         private static Object activeComponent;
@@ -15,6 +16,60 @@ namespace Project.UI.Editor
         private static List<string> activeOverrides;
         private static SerializedObject activeComponentSo;
         private static SerializedObject activePresetSo;
+
+        static UIPresetOverrideDrawer()
+        {
+            EditorApplication.contextualPropertyMenu += OnContextualPropertyMenu;
+        }
+
+        private static void OnContextualPropertyMenu(GenericMenu menu, SerializedProperty property)
+        {
+            if (property == null || property.serializedObject == null)
+            {
+                return;
+            }
+
+            Object target = property.serializedObject.targetObject;
+            if (!(target is UIContainer) && !(target is UIButton))
+            {
+                return;
+            }
+
+            string path = property.propertyPath;
+            if (string.IsNullOrEmpty(path) ||
+                path == "m_Script" ||
+                path == "preset" ||
+                path == "overriddenPaths" ||
+                path.StartsWith("overriddenPaths.", System.StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            Object preset = GetPreset(target);
+            List<string> overrides = GetOverrides(target);
+
+            menu.AddSeparator(string.Empty);
+            if (preset == null)
+            {
+                menu.AddDisabledItem(new GUIContent("Apply to Preset"));
+                menu.AddDisabledItem(new GUIContent("Revert to Preset"));
+                return;
+            }
+
+            string capturedPath = path;
+            Object capturedTarget = target;
+            Object capturedPreset = preset;
+            List<string> capturedOverrides = overrides;
+
+            menu.AddItem(new GUIContent("Apply to Preset"), false, () =>
+            {
+                ApplyPathToPreset(capturedTarget, capturedPreset, capturedOverrides, capturedPath);
+            });
+            menu.AddItem(new GUIContent("Revert to Preset"), false, () =>
+            {
+                RevertPathFromPreset(capturedTarget, capturedPreset, capturedOverrides, capturedPath);
+            });
+        }
 
         public static void Begin(Object component, Object preset, List<string> overriddenPaths, SerializedObject componentSerializedObject)
         {
@@ -37,6 +92,30 @@ namespace Project.UI.Editor
         public static bool IsActive
         {
             get { return activeComponent != null && activePreset != null; }
+        }
+
+        private static Object GetPreset(Object component)
+        {
+            UIContainer container = component as UIContainer;
+            if (container != null)
+            {
+                return container.preset;
+            }
+
+            UIButton button = component as UIButton;
+            return button != null ? button.preset : null;
+        }
+
+        private static List<string> GetOverrides(Object component)
+        {
+            UIContainer container = component as UIContainer;
+            if (container != null)
+            {
+                return container.OverriddenPaths;
+            }
+
+            UIButton button = component as UIButton;
+            return button != null ? button.OverriddenPaths : null;
         }
 
         public static void DrawContainerPresetsTab(SerializedObject serializedObject, UIContainer container)
@@ -176,26 +255,35 @@ namespace Project.UI.Editor
 
             string path = property.propertyPath;
             bool isOverride = IsPathOverridden(path);
-            Color previousBg = GUI.backgroundColor;
-            if (isOverride)
-            {
-                GUI.backgroundColor = Color.Lerp(previousBg, UIPresetOverrideUtility.OverrideTint, 0.85f);
-            }
 
-            Rect start = GUILayoutUtility.GetRect(0f, 0f);
             EditorGUI.BeginChangeCheck();
             float prevLabelWidth = EditorGUIUtility.labelWidth;
             float need = Mathf.Clamp(EditorStyles.label.CalcSize(new GUIContent(label)).x + 18f, 150f, 220f);
             EditorGUIUtility.labelWidth = need;
+
+            Color previousBg = GUI.backgroundColor;
+            Color previousContent = GUI.contentColor;
+            if (isOverride)
+            {
+                GUI.backgroundColor = Color.Lerp(previousBg, UIPresetOverrideUtility.OverrideTint, 0.7f);
+                GUI.contentColor = Color.Lerp(previousContent, new Color(1f, 0.55f, 0.15f, 1f), 0.55f);
+            }
+
             EditorGUILayout.PropertyField(property, new GUIContent(label), includeChildren);
-            EditorGUIUtility.labelWidth = prevLabelWidth;
-            bool changed = EditorGUI.EndChangeCheck();
             GUI.backgroundColor = previousBg;
+            GUI.contentColor = previousContent;
+            EditorGUIUtility.labelWidth = prevLabelWidth;
 
-            Rect end = GUILayoutUtility.GetLastRect();
-            Rect row = new Rect(start.x, end.y, end.width, end.height);
-            HandleContextMenu(row, path);
+            Rect row = GUILayoutUtility.GetLastRect();
+            if (isOverride && Event.current.type == EventType.Repaint)
+            {
+                EditorGUI.DrawRect(new Rect(row.x, row.y, 3f, row.height), UIPresetOverrideUtility.OverrideTint);
+                Color wash = UIPresetOverrideUtility.OverrideTint;
+                wash.a = 0.18f;
+                EditorGUI.DrawRect(row, wash);
+            }
 
+            bool changed = EditorGUI.EndChangeCheck();
             if (changed && activeComponentSo != null)
             {
                 activeComponentSo.ApplyModifiedProperties();
@@ -242,30 +330,6 @@ namespace Project.UI.Editor
             return false;
         }
 
-        private static void HandleContextMenu(Rect row, string path)
-        {
-            Event current = Event.current;
-            if (current.type != EventType.ContextClick || !row.Contains(current.mousePosition))
-            {
-                return;
-            }
-
-            GenericMenu menu = new GenericMenu();
-            if (activePreset == null)
-            {
-                menu.AddDisabledItem(new GUIContent("Apply to Preset"));
-                menu.AddDisabledItem(new GUIContent("Revert to Preset"));
-            }
-            else
-            {
-                menu.AddItem(new GUIContent("Apply to Preset"), false, () => ApplyPathToPreset(path));
-                menu.AddItem(new GUIContent("Revert to Preset"), false, () => RevertPathFromPreset(path));
-            }
-
-            menu.ShowAsContext();
-            current.Use();
-        }
-
         private static void RefreshOverrideForPath(string path)
         {
             if (activePresetSo == null || activeComponentSo == null || activeOverrides == null)
@@ -282,73 +346,85 @@ namespace Project.UI.Editor
                 return;
             }
 
-            bool equal;
-            try
-            {
-                equal = SerializedProperty.DataEquals(componentProp, presetProp);
-            }
-            catch
-            {
-                equal = Equals(componentProp.boxedValue, presetProp.boxedValue);
-            }
-
+            bool equal = PropertiesEqual(componentProp, presetProp);
             UIPresetOverrideUtility.SetOverride(activeOverrides, path, !equal);
             EditorUtility.SetDirty(activeComponent);
         }
 
-        private static void ApplyPathToPreset(string path)
+        private static bool PropertiesEqual(SerializedProperty a, SerializedProperty b)
         {
-            if (activePreset == null || activeComponentSo == null)
+            if (a == null || b == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                return SerializedProperty.DataEquals(a, b);
+            }
+            catch
+            {
+                return Equals(a.boxedValue, b.boxedValue);
+            }
+        }
+
+        private static void ApplyPathToPreset(Object component, Object preset, List<string> overrides, string path)
+        {
+            if (component == null || preset == null || string.IsNullOrEmpty(path))
             {
                 return;
             }
 
-            activeComponentSo.ApplyModifiedProperties();
-            activeComponentSo.Update();
-            SerializedObject presetSo = new SerializedObject(activePreset);
+            SerializedObject componentSo = new SerializedObject(component);
+            SerializedObject presetSo = new SerializedObject(preset);
+            componentSo.Update();
             presetSo.Update();
 
             string presetPath = MapComponentPathToPreset(path);
-            SerializedProperty source = activeComponentSo.FindProperty(path);
+            SerializedProperty source = componentSo.FindProperty(path);
             SerializedProperty target = presetSo.FindProperty(presetPath);
             if (source == null || target == null)
             {
+                Debug.LogWarning("[UI System] Apply to Preset: property not found: " + path + " → " + presetPath);
                 return;
             }
 
-            Undo.RecordObject(activePreset, "Apply to Preset");
+            Undo.RecordObject(preset, "Apply to Preset");
             target.boxedValue = source.boxedValue;
             presetSo.ApplyModifiedProperties();
-            EditorUtility.SetDirty(activePreset);
+            EditorUtility.SetDirty(preset);
             AssetDatabase.SaveAssets();
 
-            UIPresetOverrideUtility.SetOverride(activeOverrides, path, false);
-            EditorUtility.SetDirty(activeComponent);
+            UIPresetOverrideUtility.SetOverride(overrides, path, false);
+            EditorUtility.SetDirty(component);
         }
 
-        private static void RevertPathFromPreset(string path)
+        private static void RevertPathFromPreset(Object component, Object preset, List<string> overrides, string path)
         {
-            if (activePreset == null || activeComponentSo == null)
+            if (component == null || preset == null || string.IsNullOrEmpty(path))
             {
                 return;
             }
 
-            SerializedObject presetSo = new SerializedObject(activePreset);
+            SerializedObject componentSo = new SerializedObject(component);
+            SerializedObject presetSo = new SerializedObject(preset);
+            componentSo.Update();
             presetSo.Update();
+
             string presetPath = MapComponentPathToPreset(path);
             SerializedProperty source = presetSo.FindProperty(presetPath);
-            SerializedProperty target = activeComponentSo.FindProperty(path);
+            SerializedProperty target = componentSo.FindProperty(path);
             if (source == null || target == null)
             {
+                Debug.LogWarning("[UI System] Revert to Preset: property not found: " + path + " → " + presetPath);
                 return;
             }
 
-            Undo.RecordObject(activeComponent, "Revert to Preset");
+            Undo.RecordObject(component, "Revert to Preset");
             target.boxedValue = source.boxedValue;
-            activeComponentSo.ApplyModifiedProperties();
-            UIPresetOverrideUtility.SetOverride(activeOverrides, path, false);
-            EditorUtility.SetDirty(activeComponent);
-            activeComponentSo.Update();
+            componentSo.ApplyModifiedProperties();
+            UIPresetOverrideUtility.SetOverride(overrides, path, false);
+            EditorUtility.SetDirty(component);
         }
 
         private static string MapComponentPathToPreset(string path)
