@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5 - 2026-07-25
+
+- `UIContainer` backgrounds spawn as the first child of the container (`SetAsFirstSibling`) so they render behind content instead of covering it as a sibling.
+
 ## 0.1.4 - 2026-07-25
 
 - Soft UI SFX via `SFXManager` (`UIClickSFX`, `UIContainerShowSFX`, `UIContainerHideSFX`) on a dedicated UI AudioSource; missing manager never throws.

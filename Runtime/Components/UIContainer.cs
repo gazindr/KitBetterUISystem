@@ -712,8 +712,7 @@ namespace Project.UI
 
             if (runtimeBackground == null && backgroundSettings.backgroundPrefab != null)
             {
-                Transform parent = transform.parent == null ? transform : transform.parent;
-                GameObject backgroundObject = Instantiate(backgroundSettings.backgroundPrefab, parent);
+                GameObject backgroundObject = Instantiate(backgroundSettings.backgroundPrefab, transform);
                 backgroundObject.name = backgroundSettings.backgroundPrefab.name + " (UI System)";
                 runtimeBackground = backgroundObject.GetComponent<UIBackground>();
                 if (runtimeBackground == null)
@@ -724,9 +723,8 @@ namespace Project.UI
 
             if (runtimeBackground == null && backgroundSettings.autoCreate)
             {
-                Transform parent = transform.parent == null ? transform : transform.parent;
                 GameObject backgroundObject = new GameObject(name + " Background", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(CanvasGroup), typeof(UIBackground));
-                backgroundObject.transform.SetParent(parent, false);
+                backgroundObject.transform.SetParent(transform, false);
                 runtimeBackground = backgroundObject.GetComponent<UIBackground>();
             }
 
@@ -735,14 +733,13 @@ namespace Project.UI
                 return null;
             }
 
-            Transform desiredParent = transform.parent == null ? transform : transform.parent;
-            if (runtimeBackground.transform.parent != desiredParent)
+            // Always keep background as the first child so it draws behind container content.
+            if (runtimeBackground.transform.parent != transform)
             {
-                runtimeBackground.transform.SetParent(desiredParent, false);
+                runtimeBackground.transform.SetParent(transform, false);
             }
 
-            int containerIndex = transform.GetSiblingIndex();
-            runtimeBackground.transform.SetSiblingIndex(Mathf.Max(0, containerIndex));
+            runtimeBackground.transform.SetAsFirstSibling();
             runtimeBackground.Initialize(this, backgroundSettings);
             return runtimeBackground;
         }
