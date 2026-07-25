@@ -79,6 +79,12 @@ namespace Project.UI.Editor
                 DrawProperty("clickCooldown", "Click Cooldown");
                 DrawProperty("doubleClickInterval", "Double Click Interval");
                 DrawProperty("longClickDuration", "Long Click Duration");
+                DrawProperty("muteUISound", "Mute UI Sound");
+                SerializedProperty mute = serializedObject.FindProperty("muteUISound");
+                if (mute == null || !mute.boolValue)
+                {
+                    DrawProperty("customClickSound", "Custom Click Sound");
+                }
             }
 
             EndSection();
@@ -596,6 +602,15 @@ namespace Project.UI.Editor
             if (useAutoHide != null && useAutoHide.boolValue)
             {
                 DrawProperty("autoHideDelay", "Auto Hide Delay");
+            }
+
+            DrawProperty("deactivateOnHidden", "Deactivate On Hidden");
+            DrawProperty("muteUISound", "Mute UI Sound");
+            SerializedProperty mute = serializedObject.FindProperty("muteUISound");
+            if (mute == null || !mute.boolValue)
+            {
+                DrawProperty("customShowSound", "Custom Show Sound");
+                DrawProperty("customHideSound", "Custom Hide Sound");
             }
 
             EndSection();

@@ -50,6 +50,20 @@ namespace Project.UI
         [Tooltip("После Hide/InstantHide отключать GameObject (как Doozy InstantHide).")]
         public bool deactivateOnHidden;
 
+        [TabGroup("Settings")]
+        [Tooltip("If enabled, this container never plays Show/Hide SFX.")]
+        public bool muteUISound;
+
+        [TabGroup("Settings")]
+        [ShowIf("@!muteUISound")]
+        [Tooltip("Optional clip that overrides the global UI container Show sound from SFXManager.")]
+        public AudioClip customShowSound;
+
+        [TabGroup("Settings")]
+        [ShowIf("@!muteUISound")]
+        [Tooltip("Optional clip that overrides the global UI container Hide sound from SFXManager.")]
+        public AudioClip customHideSound;
+
         [TabGroup("Animations")]
         [HideLabel]
         public UIContainerAnimationProfile animations = new UIContainerAnimationProfile();
@@ -156,6 +170,13 @@ namespace Project.UI
             StartShow(false, false);
         }
 
+        /// <param name="showCursor">true = UnlockCursor, false = LockCursor. Plain Show() does not touch the cursor.</param>
+        public void Show(bool showCursor)
+        {
+            UICursorBridge.Apply(showCursor);
+            Show();
+        }
+
         /// <summary>
         /// Shows this container and hides every other currently open container.
         /// Other Show calls are blocked until this container becomes Hidden,
@@ -170,6 +191,13 @@ namespace Project.UI
             }
 
             StartShow(false, true);
+        }
+
+        /// <param name="showCursor">true = UnlockCursor, false = LockCursor. Plain ShowIsolated() does not touch the cursor.</param>
+        public void ShowIsolated(bool showCursor)
+        {
+            UICursorBridge.Apply(showCursor);
+            ShowIsolated();
         }
 
         public void Hide()
@@ -226,12 +254,30 @@ namespace Project.UI
             }
         }
 
+        public static void Show(string id, bool showCursor)
+        {
+            UIContainer container;
+            if (TryGetRegistered(id, out container))
+            {
+                container.Show(showCursor);
+            }
+        }
+
         public static void ShowIsolated(string id)
         {
             UIContainer container;
             if (TryGetRegistered(id, out container))
             {
                 container.ShowIsolated();
+            }
+        }
+
+        public static void ShowIsolated(string id, bool showCursor)
+        {
+            UIContainer container;
+            if (TryGetRegistered(id, out container))
+            {
+                container.ShowIsolated(showCursor);
             }
         }
 
@@ -426,6 +472,7 @@ namespace Project.UI
             StopTransitionRoutine();
             StopAutoHideRoutine();
             UIAnimationRunner.StopOwner(this);
+            PlayShowSound();
             transitionRoutine = StartCoroutine(ShowRoutine(instant));
         }
 
@@ -436,10 +483,26 @@ namespace Project.UI
                 gameObject.SetActive(true);
             }
 
+            bool shouldPlayHideSound = state == UIContainerState.Visible || state == UIContainerState.Showing;
             StopTransitionRoutine();
             StopAutoHideRoutine();
             UIAnimationRunner.StopOwner(this);
+            if (shouldPlayHideSound)
+            {
+                PlayHideSound();
+            }
+
             transitionRoutine = StartCoroutine(HideRoutine(instant));
+        }
+
+        private void PlayShowSound()
+        {
+            UISFX.Play(UISFXKind.ContainerShow, customShowSound, muteUISound);
+        }
+
+        private void PlayHideSound()
+        {
+            UISFX.Play(UISFXKind.ContainerHide, customHideSound, muteUISound);
         }
 
         private IEnumerator ShowRoutine(bool instant)

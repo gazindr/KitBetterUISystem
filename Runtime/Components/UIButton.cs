@@ -12,6 +12,15 @@ namespace Project.UI
         [Min(0f)]
         public float clickCooldown = 0.1f;
 
+        [TabGroup("Settings")]
+        [Tooltip("If enabled, this button never plays click SFX.")]
+        public bool muteUISound;
+
+        [TabGroup("Settings")]
+        [ShowIf("@!muteUISound")]
+        [Tooltip("Optional clip that overrides the global UI click sound from SFXManager.")]
+        public AudioClip customClickSound;
+
         [TabGroup("Callbacks")]
         public UnityEvent onClick = new UnityEvent();
 
@@ -38,6 +47,7 @@ namespace Project.UI
             }
 
             MarkClickAccepted();
+            PlayClickSound();
 
             if (onClick != null)
             {
@@ -62,6 +72,7 @@ namespace Project.UI
                 }
 
                 MarkClickAccepted();
+                PlayClickSound();
             }
 
             if (eventData == null || eventData.button == PointerEventData.InputButton.Left)
@@ -93,6 +104,7 @@ namespace Project.UI
             }
 
             MarkClickAccepted();
+            PlayClickSound();
             base.OnSubmit(eventData);
             if (onClick != null)
             {
@@ -147,6 +159,11 @@ namespace Project.UI
         private void MarkClickAccepted()
         {
             lastClickTime = Time.unscaledTime;
+        }
+
+        private void PlayClickSound()
+        {
+            UISFX.Play(UISFXKind.Click, customClickSound, muteUISound);
         }
     }
 }

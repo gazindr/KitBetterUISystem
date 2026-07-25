@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4 - 2026-07-25
+
+- Soft UI SFX via `SFXManager` (`UIClickSFX`, `UIContainerShowSFX`, `UIContainerHideSFX`) on a dedicated UI AudioSource; missing manager never throws.
+- `UIButton` / `UIContainer`: `muteUISound` and optional custom override clips.
+- `Show(bool showCursor)` / `ShowIsolated(bool showCursor)` (+ id overloads): unlock/lock cursor through soft `CursorLocker` bridge; plain `Show()` does not touch the cursor.
+
 ## 0.1.3 - 2026-07-25
 
 - `UIContainer.ShowIsolated()` / `ShowIsolated(id)`: shows one container, hides all other open containers, blocks their Show until the isolated container hides, then restores the suppressed containers.

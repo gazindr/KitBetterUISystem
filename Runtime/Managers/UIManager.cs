@@ -31,9 +31,19 @@ namespace Project.UI
             UIContainer.Show(id);
         }
 
+        public void Show(string id, bool showCursor)
+        {
+            UIContainer.Show(id, showCursor);
+        }
+
         public void ShowIsolated(string id)
         {
             UIContainer.ShowIsolated(id);
+        }
+
+        public void ShowIsolated(string id, bool showCursor)
+        {
+            UIContainer.ShowIsolated(id, showCursor);
         }
 
         public void Hide(string id)
