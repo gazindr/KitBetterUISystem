@@ -36,6 +36,10 @@ namespace Project.UI
         [BoxGroup("Values")]
         public UIValueMode fromMode = UIValueMode.CurrentValue;
 
+        [ShowIf(nameof(ShowDirectionFrom))]
+        [BoxGroup("Values")]
+        public UIAnimationDirection fromDirection = UIAnimationDirection.Top;
+
         [ShowIf(nameof(ShowVectorFrom))]
         [BoxGroup("Values")]
         public Vector3 customFromVector;
@@ -56,6 +60,10 @@ namespace Project.UI
         [BoxGroup("Values")]
         public UIValueMode toMode = UIValueMode.CustomValue;
 
+        [ShowIf(nameof(ShowDirectionTo))]
+        [BoxGroup("Values")]
+        public UIAnimationDirection toDirection = UIAnimationDirection.Top;
+
         [ShowIf(nameof(ShowVectorTo))]
         [BoxGroup("Values")]
         public Vector3 customToVector = Vector3.one;
@@ -71,6 +79,11 @@ namespace Project.UI
         [ShowIf(nameof(ShowFloatToOffset))]
         [BoxGroup("Values")]
         public float toFloatOffset;
+
+        [ShowIf(nameof(ShowDirectionDistance))]
+        [BoxGroup("Values")]
+        [MinValue(0.01f)]
+        public float directionDistance = 1f;
 
         [ShowIf(nameof(enabled))]
         [BoxGroup("Loop")]
@@ -127,28 +140,31 @@ namespace Project.UI
             easeMode = source.easeMode;
             customEase = source.customEase == null ? null : new AnimationCurve(source.customEase.keys);
             fromMode = source.fromMode;
+            fromDirection = source.fromDirection;
             customFromVector = source.customFromVector;
             fromVectorOffset = source.fromVectorOffset;
             customFromFloat = source.customFromFloat;
             fromFloatOffset = source.fromFloatOffset;
             toMode = source.toMode;
+            toDirection = source.toDirection;
             customToVector = source.customToVector;
             toVectorOffset = source.toVectorOffset;
             customToFloat = source.customToFloat;
             toFloatOffset = source.toFloatOffset;
+            directionDistance = source.directionDistance;
             playMode = source.playMode;
             loopCount = source.loopCount;
             loopDelay = source.loopDelay;
         }
 
-        public Vector3 ResolveVectorFrom(Vector3 currentValue, Vector3 startValue)
+        public Vector3 ResolveVectorFrom(Vector3 currentValue, Vector3 startValue, RectTransform target = null)
         {
-            return ResolveVector(fromMode, currentValue, startValue, customFromVector, fromVectorOffset);
+            return ResolveVector(fromMode, currentValue, startValue, customFromVector, fromVectorOffset, fromDirection, target, directionDistance);
         }
 
-        public Vector3 ResolveVectorTo(Vector3 currentValue, Vector3 startValue)
+        public Vector3 ResolveVectorTo(Vector3 currentValue, Vector3 startValue, RectTransform target = null)
         {
-            return ResolveVector(toMode, currentValue, startValue, customToVector, toVectorOffset);
+            return ResolveVector(toMode, currentValue, startValue, customToVector, toVectorOffset, toDirection, target, directionDistance);
         }
 
         public float ResolveFloatFrom(float currentValue, float startValue)
@@ -207,7 +223,15 @@ namespace Project.UI
             return delay + loops * duration + Mathf.Max(0, loops - 1) * loopDelay;
         }
 
-        private static Vector3 ResolveVector(UIValueMode mode, Vector3 currentValue, Vector3 startValue, Vector3 customValue, Vector3 offset)
+        private static Vector3 ResolveVector(
+            UIValueMode mode,
+            Vector3 currentValue,
+            Vector3 startValue,
+            Vector3 customValue,
+            Vector3 offset,
+            UIAnimationDirection direction,
+            RectTransform target,
+            float directionDistance)
         {
             switch (mode)
             {
@@ -219,8 +243,60 @@ namespace Project.UI
                     return startValue + offset;
                 case UIValueMode.OffsetFromCurrent:
                     return currentValue + offset;
+                case UIValueMode.Direction:
+                    return startValue + GetDirectionOffset(direction, target, directionDistance);
                 default:
                     return currentValue;
+            }
+        }
+
+        public static Vector3 GetDirectionOffset(UIAnimationDirection direction, RectTransform target, float distance = 1f)
+        {
+            float width;
+            float height;
+            if (target != null)
+            {
+                RectTransform parent = target.parent as RectTransform;
+                if (parent != null)
+                {
+                    width = Mathf.Max(parent.rect.width, target.rect.width);
+                    height = Mathf.Max(parent.rect.height, target.rect.height);
+                }
+                else
+                {
+                    width = Mathf.Max(target.rect.width, 1f);
+                    height = Mathf.Max(target.rect.height, 1f);
+                }
+            }
+            else
+            {
+                width = Screen.width;
+                height = Screen.height;
+            }
+
+            width *= Mathf.Max(0.01f, distance);
+            height *= Mathf.Max(0.01f, distance);
+
+            switch (direction)
+            {
+                case UIAnimationDirection.Left:
+                    return new Vector3(-width, 0f, 0f);
+                case UIAnimationDirection.Right:
+                    return new Vector3(width, 0f, 0f);
+                case UIAnimationDirection.Top:
+                    return new Vector3(0f, height, 0f);
+                case UIAnimationDirection.Bottom:
+                    return new Vector3(0f, -height, 0f);
+                case UIAnimationDirection.TopLeft:
+                    return new Vector3(-width, height, 0f);
+                case UIAnimationDirection.TopRight:
+                    return new Vector3(width, height, 0f);
+                case UIAnimationDirection.BottomLeft:
+                    return new Vector3(-width, -height, 0f);
+                case UIAnimationDirection.BottomRight:
+                    return new Vector3(width, -height, 0f);
+                default:
+                    return Vector3.zero;
             }
         }
 
@@ -249,6 +325,22 @@ namespace Project.UI
         private bool IsVector()
         {
             return animationType != UIAnimationType.Fade;
+        }
+
+        private bool ShowDirectionFrom()
+        {
+            return enabled && IsVector() && animationType == UIAnimationType.Move && fromMode == UIValueMode.Direction;
+        }
+
+        private bool ShowDirectionTo()
+        {
+            return enabled && IsVector() && animationType == UIAnimationType.Move && toMode == UIValueMode.Direction;
+        }
+
+        private bool ShowDirectionDistance()
+        {
+            return enabled && animationType == UIAnimationType.Move &&
+                   (fromMode == UIValueMode.Direction || toMode == UIValueMode.Direction);
         }
 
         private bool ShowVectorFrom()

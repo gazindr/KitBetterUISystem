@@ -136,6 +136,12 @@ namespace Project.UI.Editor
         private void DrawStateAnimations(UISelectable selectable)
         {
             BeginSection("State Animations");
+            UIButton button = selectable as UIButton;
+            if (button != null)
+            {
+                UIAnimationPresetDrawer.DrawButtonPresetBar(serializedObject, button);
+            }
+
             int key = selectable.GetHashCode();
             SerializedProperty stateAnimations = serializedObject.FindProperty("stateAnimations");
             int stateTab = DrawToolbarWithAnimationIndicators(StateTabByTarget, key, StateTabs, stateAnimations, StateProperties);
@@ -143,7 +149,7 @@ namespace Project.UI.Editor
             if (stateAnimations != null)
             {
                 SerializedProperty state = stateAnimations.FindPropertyRelative(StateProperties[stateTab]);
-                DrawAnimationState(state, StateAnimationTabByTarget, key);
+                DrawAnimationState(state, StateAnimationTabByTarget, key, false);
             }
 
             EditorGUILayout.BeginHorizontal();
@@ -179,7 +185,7 @@ namespace Project.UI.Editor
             int key = selectable.GetHashCode();
             int targetTab = DrawToolbar(ToggleTargetTabByTarget, key, ToggleTargetTabs);
             SerializedProperty state = serializedObject.FindProperty(ToggleTargetProperties[targetTab]);
-            DrawAnimationState(state, ToggleAnimationTabByTarget, key);
+            DrawAnimationState(state, ToggleAnimationTabByTarget, key, false);
 
             EditorGUILayout.BeginHorizontal();
             if (NeutralButton("Play Select"))
@@ -642,6 +648,8 @@ namespace Project.UI.Editor
         private void DrawAnimations(UIContainer container)
         {
             BeginSection("Container Animations");
+            UIAnimationPresetDrawer.DrawContainerPresetBar(serializedObject, container);
+
             int key = container.GetHashCode();
             SerializedProperty animations = serializedObject.FindProperty("animations");
             int stateTab = DrawToolbarWithAnimationIndicators(ContainerStateTabByTarget, key, ContainerStateTabs, animations, ContainerStateProperties);
@@ -649,7 +657,7 @@ namespace Project.UI.Editor
             if (animations != null)
             {
                 SerializedProperty state = animations.FindPropertyRelative(ContainerStateProperties[stateTab]);
-                DrawAnimationState(state, ContainerAnimationTabByTarget, key);
+                DrawAnimationState(state, ContainerAnimationTabByTarget, key, stateTab == 1);
             }
 
             EditorGUILayout.BeginHorizontal();
@@ -718,7 +726,7 @@ namespace Project.UI.Editor
                 int key = target.GetHashCode();
                 int stateTab = DrawToolbarWithAnimationIndicators(BackgroundStateTabByTarget, key, ContainerStateTabs, animations, ContainerStateProperties);
                 SerializedProperty state = animations.FindPropertyRelative(ContainerStateProperties[stateTab]);
-                DrawAnimationState(state, BackgroundAnimationTabByTarget, key);
+                DrawAnimationState(state, BackgroundAnimationTabByTarget, key, stateTab == 1);
             }
 
             EndSection();
@@ -803,8 +811,8 @@ namespace Project.UI.Editor
         private const float AnimationIconSize = 16f;
         private const float AnimationIconSpacing = 6f;
         private const float ButtonHeight = 27f;
-        private const float TwoColumnMinWidth = 760f;
-        private const float FieldColumnLabelWidth = 86f;
+        private const float TwoColumnMinWidth = 920f;
+        private const float FieldColumnLabelWidth = 150f;
 
         private static readonly string[] AnimationTabs = { "Move", "Rotate", "Scale", "Fade" };
         private static readonly string[] AnimationProperties = { "move", "rotate", "scale", "fade" };
@@ -888,7 +896,7 @@ namespace Project.UI.Editor
             return value;
         }
 
-        public static void DrawAnimationState(SerializedProperty state, Dictionary<int, int> animationTabs, int key)
+        public static void DrawAnimationState(SerializedProperty state, Dictionary<int, int> animationTabs, int key, bool isHideState)
         {
             if (state == null)
             {
@@ -898,7 +906,12 @@ namespace Project.UI.Editor
 
             int animationTab = DrawAnimationToolbar(animationTabs, key, state);
             SerializedProperty settings = state.FindPropertyRelative(AnimationProperties[animationTab]);
-            DrawAnimationSettings(settings, (UIAnimationType)animationTab);
+            DrawAnimationSettings(settings, (UIAnimationType)animationTab, isHideState);
+        }
+
+        public static void DrawAnimationState(SerializedProperty state, Dictionary<int, int> animationTabs, int key)
+        {
+            DrawAnimationState(state, animationTabs, key, false);
         }
 
         private static int DrawAnimationToolbar(Dictionary<int, int> tabs, int key, SerializedProperty state)
@@ -1091,7 +1104,7 @@ namespace Project.UI.Editor
             return null;
         }
 
-        public static void DrawAnimationSettings(SerializedProperty settings, UIAnimationType type)
+        public static void DrawAnimationSettings(SerializedProperty settings, UIAnimationType type, bool isHideState = false)
         {
             if (settings == null)
             {
@@ -1101,6 +1114,7 @@ namespace Project.UI.Editor
 
             BeginInnerSection(type + " Animation");
             SerializedProperty enabled = settings.FindPropertyRelative("enabled");
+            EditorGUI.BeginChangeCheck();
             Color previousBg = GUI.backgroundColor;
             if (enabled != null && enabled.boolValue)
             {
@@ -1109,6 +1123,11 @@ namespace Project.UI.Editor
 
             DrawRelative(settings, "enabled", type + " Enabled");
             GUI.backgroundColor = previousBg;
+            if (EditorGUI.EndChangeCheck() && enabled != null && enabled.boolValue)
+            {
+                ApplyEnableDefaults(settings, type, isHideState);
+            }
+
             if (enabled == null || !enabled.boolValue)
             {
                 EditorGUILayout.HelpBox(type + " animation is disabled.", MessageType.None);
@@ -1131,8 +1150,11 @@ namespace Project.UI.Editor
             }
             EndSection();
 
-            BeginInnerSection("Values");
-            DrawValueColumns(settings, type);
+            string valuesTitle = type == UIAnimationType.Move
+                ? (isHideState ? "Values (Hide → where it goes)" : "Values (Show ← where it comes from)")
+                : "Values";
+            BeginInnerSection(valuesTitle);
+            DrawValueColumns(settings, type, isHideState);
             EndSection();
 
             BeginInnerSection("Loop");
@@ -1147,6 +1169,55 @@ namespace Project.UI.Editor
             EndSection();
         }
 
+        private static void ApplyEnableDefaults(SerializedProperty settings, UIAnimationType type, bool isHideState)
+        {
+            if (type == UIAnimationType.Move)
+            {
+                if (isHideState)
+                {
+                    settings.FindPropertyRelative("fromMode").enumValueIndex = (int)UIValueMode.StartValue;
+                    settings.FindPropertyRelative("toMode").enumValueIndex = (int)UIValueMode.Direction;
+                    settings.FindPropertyRelative("toDirection").enumValueIndex = (int)UIAnimationDirection.Top;
+                }
+                else
+                {
+                    settings.FindPropertyRelative("fromMode").enumValueIndex = (int)UIValueMode.Direction;
+                    settings.FindPropertyRelative("fromDirection").enumValueIndex = (int)UIAnimationDirection.Top;
+                    settings.FindPropertyRelative("toMode").enumValueIndex = (int)UIValueMode.StartValue;
+                }
+            }
+            else if (type == UIAnimationType.Scale)
+            {
+                if (isHideState)
+                {
+                    settings.FindPropertyRelative("fromMode").enumValueIndex = (int)UIValueMode.CurrentValue;
+                    settings.FindPropertyRelative("toMode").enumValueIndex = (int)UIValueMode.CustomValue;
+                    settings.FindPropertyRelative("customToVector").vector3Value = Vector3.zero;
+                }
+                else
+                {
+                    settings.FindPropertyRelative("fromMode").enumValueIndex = (int)UIValueMode.CustomValue;
+                    settings.FindPropertyRelative("customFromVector").vector3Value = Vector3.zero;
+                    settings.FindPropertyRelative("toMode").enumValueIndex = (int)UIValueMode.CurrentValue;
+                }
+            }
+            else if (type == UIAnimationType.Fade)
+            {
+                if (isHideState)
+                {
+                    settings.FindPropertyRelative("fromMode").enumValueIndex = (int)UIValueMode.CurrentValue;
+                    settings.FindPropertyRelative("toMode").enumValueIndex = (int)UIValueMode.CustomValue;
+                    settings.FindPropertyRelative("customToFloat").floatValue = 0f;
+                }
+                else
+                {
+                    settings.FindPropertyRelative("fromMode").enumValueIndex = (int)UIValueMode.CustomValue;
+                    settings.FindPropertyRelative("customFromFloat").floatValue = 0f;
+                    settings.FindPropertyRelative("toMode").enumValueIndex = (int)UIValueMode.CurrentValue;
+                }
+            }
+        }
+
         private static void DrawValueFields(SerializedProperty settings, string prefix, UIAnimationType type)
         {
             SerializedProperty mode = settings.FindPropertyRelative(prefix + "Mode");
@@ -1157,7 +1228,12 @@ namespace Project.UI.Editor
 
             UIValueMode valueMode = (UIValueMode)mode.enumValueIndex;
             bool fade = type == UIAnimationType.Fade;
-            if (valueMode == UIValueMode.CustomValue)
+            if (valueMode == UIValueMode.Direction && type == UIAnimationType.Move)
+            {
+                UIAnimationPresetDrawer.DrawDirectionGrid(settings.FindPropertyRelative(prefix + "Direction"), prefix == "from" ? "From Direction" : "To Direction");
+                DrawRelative(settings, "directionDistance", "Distance");
+            }
+            else if (valueMode == UIValueMode.CustomValue)
             {
                 DrawRelative(settings, fade ? "custom" + Upper(prefix) + "Float" : "custom" + Upper(prefix) + "Vector", "Custom " + Upper(prefix));
             }
@@ -1185,38 +1261,28 @@ namespace Project.UI.Editor
             EditorGUILayout.EndHorizontal();
         }
 
-        private static void DrawValueColumns(SerializedProperty settings, UIAnimationType type)
+        private static void DrawValueColumns(SerializedProperty settings, UIAnimationType type, bool isHideState)
         {
-            bool useColumns = EditorGUIUtility.currentViewWidth >= TwoColumnMinWidth;
-            if (useColumns)
-            {
-                EditorGUILayout.BeginHorizontal();
-            }
+            // Always stack From/To so Vector3 / direction grids never overflow the inspector.
+            string fromTitle = type == UIAnimationType.Move && !isHideState ? "From (comes from)" : "From";
+            string toTitle = type == UIAnimationType.Move && isHideState ? "To (goes to)" : "To";
 
-            BeginValueColumn("From");
+            BeginValueColumn(fromTitle);
             DrawRelative(settings, "fromMode", "Mode");
             DrawValueFields(settings, "from", type);
             EndValueColumn();
 
-            if (useColumns)
-            {
-                GUILayout.Space(8f);
-            }
+            EditorGUILayout.Space(6f);
 
-            BeginValueColumn("To");
+            BeginValueColumn(toTitle);
             DrawRelative(settings, "toMode", "Mode");
             DrawValueFields(settings, "to", type);
             EndValueColumn();
-
-            if (useColumns)
-            {
-                EditorGUILayout.EndHorizontal();
-            }
         }
 
         private static void BeginValueColumn(string title)
         {
-            EditorGUILayout.BeginVertical(InnerSectionStyle, GUILayout.MinWidth(0f));
+            EditorGUILayout.BeginVertical(InnerSectionStyle, GUILayout.MinWidth(0f), GUILayout.MaxWidth(10000f));
             EditorGUILayout.LabelField(title, SubHeaderStyle);
         }
 
@@ -1243,7 +1309,8 @@ namespace Project.UI.Editor
             if (property != null)
             {
                 float previousLabelWidth = EditorGUIUtility.labelWidth;
-                EditorGUIUtility.labelWidth = previousLabelWidth <= 0f ? FieldColumnLabelWidth : Mathf.Min(previousLabelWidth, FieldColumnLabelWidth);
+                float needed = Mathf.Clamp(EditorStyles.label.CalcSize(new GUIContent(label)).x + 18f, FieldColumnLabelWidth, 220f);
+                EditorGUIUtility.labelWidth = needed;
                 EditorGUILayout.PropertyField(property, new GUIContent(label), includeChildren);
                 EditorGUIUtility.labelWidth = previousLabelWidth;
             }

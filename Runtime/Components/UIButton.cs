@@ -21,6 +21,10 @@ namespace Project.UI
         [Tooltip("Optional clip that overrides the global UI click sound from SFXManager.")]
         public AudioClip customClickSound;
 
+        [TabGroup("Animations")]
+        [Tooltip("Optional animation preset. Changes from the preset are marked with * until Save.")]
+        public UIButtonAnimationPreset animationPreset;
+
         [TabGroup("Callbacks")]
         public UnityEvent onClick = new UnityEvent();
 
@@ -33,6 +37,11 @@ namespace Project.UI
         public UIPresetApplyMask presetApplyMask = new UIPresetApplyMask();
 
         private float lastClickTime = -999999f;
+
+        private void Reset()
+        {
+            stateAnimations = UIAnimationDefaults.CreateButtonProfile();
+        }
 
         public void Click()
         {

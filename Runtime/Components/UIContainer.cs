@@ -68,6 +68,10 @@ namespace Project.UI
         [HideLabel]
         public UIContainerAnimationProfile animations = new UIContainerAnimationProfile();
 
+        [TabGroup("Animations")]
+        [Tooltip("Optional animation preset. Changes from the preset are marked with * until Save.")]
+        public UIContainerAnimationPreset animationPreset;
+
         [TabGroup("Background")]
         [HideLabel]
         public UIBackgroundSettings backgroundSettings = new UIBackgroundSettings();
@@ -374,6 +378,7 @@ namespace Project.UI
         private void Reset()
         {
             id = name;
+            animations = UIAnimationDefaults.CreateContainerProfile();
         }
 
         private void Awake()
@@ -869,7 +874,7 @@ namespace Project.UI
         [Button(ButtonSizes.Small)]
         private void ResetAnimations()
         {
-            animations = new UIContainerAnimationProfile();
+            animations = UIAnimationDefaults.CreateContainerProfile();
         }
 
         [TabGroup("Presets")]

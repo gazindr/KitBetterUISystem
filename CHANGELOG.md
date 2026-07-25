@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.6 - 2026-07-25
+
+- Inspector: wider labels (no clipping), Values From/To stacked to prevent overflow.
+- Move `Direction` mode with arrow grid: Show = where it comes from, Hide = where it goes to.
+- Default UIContainer animations: Scale on (0↔current); Move/Fade templates ready when enabled (Top).
+- Default UIButton animations: Highlight scale 1.1, Pressed 0.9, Disabled fade 0.8, Normal/Selected fade 1.
+- Animation preset bar for UIContainer/UIButton: select preset, dirty `*`, Save, and `+` to create.
+
 ## 0.1.5 - 2026-07-25
 
 - `UIContainer` backgrounds spawn as the first child of the container (`SetAsFirstSibling`) so they render behind content instead of covering it as a sibling.

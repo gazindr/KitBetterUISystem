@@ -236,16 +236,16 @@ namespace Project.UI
             switch (type)
             {
                 case UIAnimationType.Move:
-                    vectorFrom = settings.ResolveVectorFrom(target.anchoredPosition3D, startValues.anchoredPosition3D);
-                    vectorTo = settings.ResolveVectorTo(target.anchoredPosition3D, startValues.anchoredPosition3D);
+                    vectorFrom = settings.ResolveVectorFrom(target.anchoredPosition3D, startValues.anchoredPosition3D, target);
+                    vectorTo = settings.ResolveVectorTo(target.anchoredPosition3D, startValues.anchoredPosition3D, target);
                     break;
                 case UIAnimationType.Rotate:
-                    vectorFrom = settings.ResolveVectorFrom(target.localEulerAngles, startValues.localEulerAngles);
-                    vectorTo = settings.ResolveVectorTo(target.localEulerAngles, startValues.localEulerAngles);
+                    vectorFrom = settings.ResolveVectorFrom(target.localEulerAngles, startValues.localEulerAngles, target);
+                    vectorTo = settings.ResolveVectorTo(target.localEulerAngles, startValues.localEulerAngles, target);
                     break;
                 case UIAnimationType.Scale:
-                    vectorFrom = settings.ResolveVectorFrom(target.localScale, startValues.localScale);
-                    vectorTo = settings.ResolveVectorTo(target.localScale, startValues.localScale);
+                    vectorFrom = settings.ResolveVectorFrom(target.localScale, startValues.localScale, target);
+                    vectorTo = settings.ResolveVectorTo(target.localScale, startValues.localScale, target);
                     break;
                 case UIAnimationType.Fade:
                     float currentAlpha = canvasGroup == null ? 1f : canvasGroup.alpha;

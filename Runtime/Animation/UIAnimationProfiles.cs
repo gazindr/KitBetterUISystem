@@ -20,23 +20,23 @@ namespace Project.UI
     {
         [TabGroup("Normal")]
         [HideLabel]
-        public UIAnimationState normal = new UIAnimationState();
+        public UIAnimationState normal = UIAnimationDefaults.CreateButtonNormal();
 
         [TabGroup("Highlighted")]
         [HideLabel]
-        public UIAnimationState highlighted = new UIAnimationState();
+        public UIAnimationState highlighted = UIAnimationDefaults.CreateButtonHighlighted();
 
         [TabGroup("Pressed")]
         [HideLabel]
-        public UIAnimationState pressed = new UIAnimationState();
+        public UIAnimationState pressed = UIAnimationDefaults.CreateButtonPressed();
 
         [TabGroup("Selected")]
         [HideLabel]
-        public UIAnimationState selected = new UIAnimationState();
+        public UIAnimationState selected = UIAnimationDefaults.CreateButtonSelected();
 
         [TabGroup("Disabled")]
         [HideLabel]
-        public UIAnimationState disabled = new UIAnimationState();
+        public UIAnimationState disabled = UIAnimationDefaults.CreateButtonDisabled();
 
         public UIAnimationState GetState(UISelectableState state)
         {
@@ -75,11 +75,11 @@ namespace Project.UI
     {
         [TabGroup("Show")]
         [HideLabel]
-        public UIAnimationState show = new UIAnimationState();
+        public UIAnimationState show = UIAnimationDefaults.CreateContainerShow();
 
         [TabGroup("Hide")]
         [HideLabel]
-        public UIAnimationState hide = new UIAnimationState();
+        public UIAnimationState hide = UIAnimationDefaults.CreateContainerHide();
 
         public void CopyFrom(UIContainerAnimationProfile source)
         {
@@ -93,6 +93,3 @@ namespace Project.UI
         }
     }
 }
-
-
-

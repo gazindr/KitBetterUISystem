@@ -461,16 +461,16 @@ namespace Project.UI
             switch (type)
             {
                 case UIAnimationType.Move:
-                    vectorFrom = settings.ResolveVectorFrom(target.anchoredPosition3D, startValues.AnchoredPosition3D);
-                    vectorTo = settings.ResolveVectorTo(target.anchoredPosition3D, startValues.AnchoredPosition3D);
+                    vectorFrom = settings.ResolveVectorFrom(target.anchoredPosition3D, startValues.AnchoredPosition3D, target);
+                    vectorTo = settings.ResolveVectorTo(target.anchoredPosition3D, startValues.AnchoredPosition3D, target);
                     break;
                 case UIAnimationType.Rotate:
-                    vectorFrom = settings.ResolveVectorFrom(target.localEulerAngles, startValues.LocalEulerAngles);
-                    vectorTo = settings.ResolveVectorTo(target.localEulerAngles, startValues.LocalEulerAngles);
+                    vectorFrom = settings.ResolveVectorFrom(target.localEulerAngles, startValues.LocalEulerAngles, target);
+                    vectorTo = settings.ResolveVectorTo(target.localEulerAngles, startValues.LocalEulerAngles, target);
                     break;
                 case UIAnimationType.Scale:
-                    vectorFrom = settings.ResolveVectorFrom(target.localScale, startValues.LocalScale);
-                    vectorTo = settings.ResolveVectorTo(target.localScale, startValues.LocalScale);
+                    vectorFrom = settings.ResolveVectorFrom(target.localScale, startValues.LocalScale, target);
+                    vectorTo = settings.ResolveVectorTo(target.localScale, startValues.LocalScale, target);
                     break;
                 case UIAnimationType.Fade:
                     float currentAlpha = canvasGroup == null ? 1f : canvasGroup.alpha;
@@ -503,19 +503,19 @@ namespace Project.UI
                     vectorFrom = target.anchoredPosition3D;
                     vectorTo = returnToStart || targetSettings == null
                         ? startValues.AnchoredPosition3D
-                        : targetSettings.ResolveVectorTo(target.anchoredPosition3D, startValues.AnchoredPosition3D);
+                        : targetSettings.ResolveVectorTo(target.anchoredPosition3D, startValues.AnchoredPosition3D, target);
                     break;
                 case UIAnimationType.Rotate:
                     vectorFrom = target.localEulerAngles;
                     vectorTo = returnToStart || targetSettings == null
                         ? startValues.LocalEulerAngles
-                        : targetSettings.ResolveVectorTo(target.localEulerAngles, startValues.LocalEulerAngles);
+                        : targetSettings.ResolveVectorTo(target.localEulerAngles, startValues.LocalEulerAngles, target);
                     break;
                 case UIAnimationType.Scale:
                     vectorFrom = target.localScale;
                     vectorTo = returnToStart || targetSettings == null
                         ? startValues.LocalScale
-                        : targetSettings.ResolveVectorTo(target.localScale, startValues.LocalScale);
+                        : targetSettings.ResolveVectorTo(target.localScale, startValues.LocalScale, target);
                     break;
                 case UIAnimationType.Fade:
                     float currentAlpha = canvasGroup == null ? 1f : canvasGroup.alpha;

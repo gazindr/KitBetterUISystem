@@ -457,7 +457,7 @@ namespace Project.UI
         [Button(ButtonSizes.Small)]
         protected void ResetAnimations()
         {
-            stateAnimations = new UISelectableAnimationProfile();
+            stateAnimations = UIAnimationDefaults.CreateButtonProfile();
         }
 
         private static List<UIBehaviourBlock> CloneBehaviourBlocks(List<UIBehaviourBlock> source, bool includeCallbacks)
