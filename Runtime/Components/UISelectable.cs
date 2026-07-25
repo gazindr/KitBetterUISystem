@@ -49,7 +49,7 @@ namespace Project.UI
 
         [TabGroup("Behaviours")]
         [ValueDropdown(nameof(GetAvailableBehaviourTriggers))]
-        public UIBehaviourTrigger behaviourToAdd = UIBehaviourTrigger.PointerUp;
+        public UIBehaviourTrigger behaviourToAdd = UIBehaviourTrigger.PointerLeftClick;
 
         [TabGroup("Behaviours")]
         [ListDrawerSettings(ShowFoldout = true, DefaultExpandedState = true)]

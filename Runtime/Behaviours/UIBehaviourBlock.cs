@@ -10,7 +10,7 @@ namespace Project.UI
     {
         [HorizontalGroup("Header")]
         [ValueDropdown(nameof(GetTriggerOptions))]
-        public UIBehaviourTrigger trigger = UIBehaviourTrigger.PointerUp;
+        public UIBehaviourTrigger trigger = UIBehaviourTrigger.PointerLeftClick;
 
         [HorizontalGroup("Header", Width = 70)]
         [LabelWidth(50)]
