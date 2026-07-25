@@ -38,8 +38,9 @@ namespace Project.UI
 
         private float lastClickTime = -999999f;
 
-        private void Reset()
+        protected override void Reset()
         {
+            base.Reset();
             stateAnimations = UIAnimationDefaults.CreateButtonProfile();
         }
 
