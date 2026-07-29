@@ -145,7 +145,7 @@ namespace Project.UI
                 return;
             }
 
-            ApplySelectablePresetData(sourcePreset.stateAnimations, sourcePreset.behaviours, mask);
+            ApplySelectablePresetData(sourcePreset.stateAnimations, null, mask);
 
             if (mask == null || mask.ShouldApplySettings)
             {
@@ -183,6 +183,7 @@ namespace Project.UI
             SetValue(sliderValue, false);
         }
 
+#if UNITY_EDITOR
         protected override void OnValidate()
         {
             base.OnValidate();
@@ -194,6 +195,7 @@ namespace Project.UI
             sliderValue = ClampValue(sliderValue);
             UpdateVisuals();
         }
+#endif
 
         [TabGroup("Presets")]
         [Button(ButtonSizes.Medium)]

@@ -246,13 +246,13 @@ UIContainer.Toggle("SettingsUI");
    - `Animation Preset`
    - `Behaviour Preset`
 3. Настрой animations, behaviours, callbacks и settings.
-4. В компоненте назначь preset во вкладке `Presets` — значения копируются на инстанс, overrides очищаются.
+4. В компоненте назначь preset во вкладке `Presets` — settings/animations копируются на инстанс, overrides очищаются. **Behaviours на инстансе никогда не перезаписываются** style-пресетом (Button/Toggle/Tab/Slider). Для копирования behaviours используй `Behaviour Preset`.
 5. Правь поля на компоненте: отличающиеся от пресета подсвечиваются оранжевым и попадают в overrides.
 6. ПКМ по полю: **Apply to Preset** / **Revert to Preset**. На вкладке Presets: dirty `*`, **Save** (все поля), **+** (новый asset).
 
-`UIContainer` / `UIButton` больше не используют `presetApplyMask` и отдельный animation preset в инспекторе — один полный пресет.
+`UIContainer` / `UIButton` больше не используют `presetApplyMask` и отдельный animation preset в инспекторе — один полный пресет (без behaviours).
 
-Чтобы применить только animations без behaviours на других selectables (Toggle/Tab/Slider):
+Чтобы применить только animations на других selectables (Toggle/Tab/Slider):
 
 1. В `presetApplyMask.mode` выбери `OnlyAnimations`.
 2. Нажми `Apply Preset`.

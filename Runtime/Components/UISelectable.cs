@@ -113,6 +113,18 @@ namespace Project.UI
 
         public virtual void ApplySelectablePresetData(UISelectableAnimationProfile animations, List<UIBehaviourBlock> presetBehaviours, UIPresetApplyMask mask)
         {
+            ApplySelectablePresetData(animations, presetBehaviours, mask, allowReplaceBehaviours: false);
+        }
+
+        /// <param name="allowReplaceBehaviours">
+        /// Only true for <see cref="UIBehaviourPreset"/>. Style presets must never wipe instance behaviours.
+        /// </param>
+        public virtual void ApplySelectablePresetData(
+            UISelectableAnimationProfile animations,
+            List<UIBehaviourBlock> presetBehaviours,
+            UIPresetApplyMask mask,
+            bool allowReplaceBehaviours)
+        {
             if (mask == null)
             {
                 mask = new UIPresetApplyMask();
@@ -123,7 +135,7 @@ namespace Project.UI
                 stateAnimations.CopyFrom(animations);
             }
 
-            if (mask.ShouldApplyBehaviours && presetBehaviours != null)
+            if (allowReplaceBehaviours && mask.ShouldApplyBehaviours && presetBehaviours != null)
             {
                 behaviours = CloneBehaviourBlocks(presetBehaviours, mask.ShouldApplyCallbacks);
             }
@@ -241,7 +253,21 @@ namespace Project.UI
         {
             base.OnEnable();
             ResetBehaviourRuntimeState();
-            SetState(IsInteractable() ? UISelectableState.Normal : UISelectableState.Disabled, true);
+
+            // Refresh resting pose so state transitions don't snap to a stale cached position
+            // after the RectTransform was moved in the editor / prefab mode.
+            RectTransform rectTransform = transform as RectTransform;
+            if (rectTransform != null)
+            {
+                UIAnimationRunner.CaptureStart(rectTransform);
+            }
+
+            // base.OnEnable → DoStateTransition already calls SetState when animateStateAutomatically.
+            // Keep an explicit instant sync only for that mode.
+            if (animateStateAutomatically)
+            {
+                SetState(IsInteractable() ? UISelectableState.Normal : UISelectableState.Disabled, true);
+            }
         }
 
         protected override void OnDisable()
@@ -300,9 +326,10 @@ namespace Project.UI
             }
         }
 
-        protected override void OnValidate()
+#if UNITY_EDITOR
+        // Unity 6 uGUI: Selectable.OnValidate exists only in editor — cannot override for player builds.
+        protected virtual void OnValidate()
         {
-            base.OnValidate();
             if (stateAnimations != null)
             {
                 stateAnimations.normal.EnsureTypes();
@@ -312,6 +339,7 @@ namespace Project.UI
                 stateAnimations.disabled.EnsureTypes();
             }
         }
+#endif
 
         protected void ExecuteTrigger(UIBehaviourTrigger trigger, PointerEventData pointerEventData, bool hasSelectedState = false, UISelectableState selectedState = UISelectableState.Normal, bool hasSliderValue = false, float sliderValue = 0f)
         {

@@ -181,7 +181,7 @@ namespace Project.UI
                 return;
             }
 
-            ApplySelectablePresetData(sourcePreset.stateAnimations, sourcePreset.behaviours, mask);
+            ApplySelectablePresetData(sourcePreset.stateAnimations, null, mask);
 
             if (mask == null || mask.ShouldApplySettings)
             {

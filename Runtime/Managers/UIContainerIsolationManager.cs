@@ -30,7 +30,7 @@ namespace Project.UI
 
         public static bool IsBlocked(UIContainer container)
         {
-            if (container == null || isolated == null || container == isolated)
+            if (ending || container == null || isolated == null || container == isolated)
             {
                 return false;
             }
@@ -50,10 +50,10 @@ namespace Project.UI
                 return;
             }
 
+            // Switching isolation: restore previous set before suppressing a new one.
             if (isolated != null)
             {
-                isolated = null;
-                suppressed.Clear();
+                EndAndRestore();
             }
 
             suppressed.Clear();
@@ -69,7 +69,8 @@ namespace Project.UI
                 if (other.State == UIContainerState.Visible || other.State == UIContainerState.Showing)
                 {
                     suppressed.Add(other);
-                    other.Hide();
+                    // Instant hide avoids async Hide finishing after restore Show.
+                    other.InstantHide();
                 }
             }
 
@@ -97,8 +98,7 @@ namespace Project.UI
 
             if (isolated == container)
             {
-                isolated = null;
-                suppressed.Clear();
+                EndAndRestore();
             }
         }
 
@@ -111,22 +111,32 @@ namespace Project.UI
 
         private static void EndAndRestore()
         {
+            if (ending)
+            {
+                return;
+            }
+
             ending = true;
             isolated = null;
 
             List<UIContainer> toRestore = new List<UIContainer>(suppressed);
             suppressed.Clear();
 
-            for (int i = 0; i < toRestore.Count; i++)
+            try
             {
-                UIContainer container = toRestore[i];
-                if (container != null)
+                for (int i = 0; i < toRestore.Count; i++)
                 {
-                    container.Show();
+                    UIContainer container = toRestore[i];
+                    if (container != null)
+                    {
+                        container.InstantShow();
+                    }
                 }
             }
-
-            ending = false;
+            finally
+            {
+                ending = false;
+            }
         }
     }
 }

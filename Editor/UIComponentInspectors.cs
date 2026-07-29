@@ -1219,7 +1219,7 @@ namespace Project.UI.Editor
             animationIcons = new Texture2D[AnimationIconFiles.Length];
             for (int i = 0; i < AnimationIconFiles.Length; i++)
             {
-                animationIcons[i] = LoadAnimationIcon(AnimationIconFiles[i]);
+                animationIcons[i] = LoadEditorIcon(AnimationIconFiles[i]);
             }
 
             return animationIcons;
@@ -1235,13 +1235,13 @@ namespace Project.UI.Editor
             quickClickIcons = new Texture2D[QuickClickIconFiles.Length];
             for (int i = 0; i < QuickClickIconFiles.Length; i++)
             {
-                quickClickIcons[i] = LoadAnimationIcon(QuickClickIconFiles[i]);
+                quickClickIcons[i] = LoadEditorIcon(QuickClickIconFiles[i]);
             }
 
             return quickClickIcons;
         }
 
-        private static Texture2D LoadAnimationIcon(string fileName)
+        private static Texture2D LoadEditorIcon(string fileName)
         {
             string assetPath = "Assets/UISystem/" + fileName;
             Texture2D icon = AssetDatabase.LoadAssetAtPath<Texture2D>(assetPath);

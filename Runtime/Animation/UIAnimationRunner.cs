@@ -164,7 +164,29 @@ namespace Project.UI
             }
 
             CanvasGroup canvasGroup = target.GetComponent<CanvasGroup>();
-            StartValuesByTarget[target.GetHashCode()] = StartValues.Capture(target, canvasGroup);
+            StartValuesByTarget[target.GetInstanceID()] = StartValues.Capture(target, canvasGroup);
+        }
+
+        /// <summary>
+        /// Restores captured start transform/alpha so a following Show
+        /// (e.g. scale to CurrentValue) does not animate 0→0 after Hide.
+        /// </summary>
+        public static void ApplyStartValues(RectTransform target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            CanvasGroup canvasGroup = target.GetComponent<CanvasGroup>();
+            StartValues startValues = GetStartValues(target, canvasGroup);
+            target.anchoredPosition3D = startValues.AnchoredPosition3D;
+            target.localEulerAngles = startValues.LocalEulerAngles;
+            target.localScale = startValues.LocalScale;
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = startValues.Alpha;
+            }
         }
 
         private static void PlayProperty(
@@ -231,8 +253,12 @@ namespace Project.UI
             ref bool hasAnimation,
             Action onComplete)
         {
+            // Return-to-start only if the PREVIOUS state actually animated this property.
+            // Otherwise (e.g. Move never enabled on button states) a manual RectTransform edit
+            // would look "different from start" and get snapped back — breaking prefab editing.
             bool hasTargetAnimation = targetSettings != null && targetSettings.enabled;
-            bool shouldReturnToStart = !hasTargetAnimation && IsCurrentDifferentFromStart(target, canvasGroup, startValues, type);
+            bool hadPreviousAnimation = previousSettings != null && previousSettings.enabled;
+            bool shouldReturnToStart = !hasTargetAnimation && hadPreviousAnimation;
             if (!hasTargetAnimation && !shouldReturnToStart)
             {
                 return;
@@ -589,25 +615,6 @@ namespace Project.UI
             return state != null && state.fade != null && state.fade.enabled;
         }
 
-        private static bool IsCurrentDifferentFromStart(RectTransform target, CanvasGroup canvasGroup, StartValues startValues, UIAnimationType type)
-        {
-            const float epsilon = 0.0001f;
-            switch (type)
-            {
-                case UIAnimationType.Move:
-                    return (target.anchoredPosition3D - startValues.AnchoredPosition3D).sqrMagnitude > epsilon;
-                case UIAnimationType.Rotate:
-                    return (target.localEulerAngles - startValues.LocalEulerAngles).sqrMagnitude > epsilon;
-                case UIAnimationType.Scale:
-                    return (target.localScale - startValues.LocalScale).sqrMagnitude > epsilon;
-                case UIAnimationType.Fade:
-                    float currentAlpha = canvasGroup == null ? 1f : canvasGroup.alpha;
-                    return Mathf.Abs(currentAlpha - startValues.Alpha) > epsilon;
-                default:
-                    return false;
-            }
-        }
-
         private static float GetTransitionDelay(UIAnimationSettings timingSettings)
         {
             return timingSettings == null ? 0f : Mathf.Max(0f, timingSettings.delay);
@@ -657,7 +664,7 @@ namespace Project.UI
 
         private static StartValues GetStartValues(RectTransform target, CanvasGroup canvasGroup)
         {
-            int id = target.GetHashCode();
+            int id = target.GetInstanceID();
             StartValues values;
             if (!StartValuesByTarget.TryGetValue(id, out values))
             {

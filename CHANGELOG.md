@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.10 - 2026-07-29
+
+- Fix button / selectable position snap-back: return-to-start only when the previous state actually animated that property (manual RectTransform edits no longer get snapped to a cached start pose).
+- Recapture start values on enable; use `GetInstanceID()` for the start-value cache.
+- Fix `ShowIsolated` restore: after Hide, Show could animate scale/fade to `CurrentValue` (already 0) so UI stayed invisible. `ShowRoutine` now reapplies captured start values first.
+- Isolation: suppress with `InstantHide`, restore with `InstantShow`; switching isolation restores the previous set; `Remove(isolated)` restores instead of dropping the list; `ending` guarded with try/finally.
+- Style presets (`UIButton` / Toggle / Tab / Slider) **never overwrite instance behaviours**. Use `UIBehaviourPreset` to copy behaviours intentionally.
+- `UIButton.SaveAllToPreset` no longer pushes behaviours into the button preset asset.
+- Unity 6: `Reset` / `OnValidate` are editor-only (no longer override player-only missing base methods).
+- `UISFX` uses an explicit `SetHandler` bridge (SFXManager registers in Awake) instead of reflection.
+
 ## 0.1.9 - 2026-07-29
 
 - Inspector: quick-click buttons (LMB / MMB / RMB) above the behaviour trigger dropdown for faster Pointer Left/Middle/Right Click setup; those triggers are removed from the dropdown.

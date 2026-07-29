@@ -18,7 +18,15 @@ namespace Project.UI
             }
 
             UIPresetApplyMask mask = ResolveMask(overrideMask);
-            selectable.ApplySelectablePresetData(null, behaviours, mask);
+            if (overrideMask == null)
+            {
+                mask = new UIPresetApplyMask
+                {
+                    mode = UIPresetApplyMode.OnlyBehaviours
+                };
+            }
+
+            selectable.ApplySelectablePresetData(null, behaviours, mask, allowReplaceBehaviours: true);
         }
     }
 }

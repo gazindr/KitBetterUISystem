@@ -183,7 +183,7 @@ namespace Project.UI
                 return;
             }
 
-            ApplySelectablePresetData(sourcePreset.stateAnimations, sourcePreset.behaviours, mask);
+            ApplySelectablePresetData(sourcePreset.stateAnimations, null, mask);
 
             if (mask == null || mask.ShouldApplySettings)
             {
@@ -226,6 +226,7 @@ namespace Project.UI
             SetIsOn(isOn, true, false);
         }
 
+#if UNITY_EDITOR
         protected override void OnValidate()
         {
             base.OnValidate();
@@ -234,6 +235,7 @@ namespace Project.UI
             handleSelectAnimation.EnsureTypes();
             handleDeselectAnimation.EnsureTypes();
         }
+#endif
 
         [TabGroup("Presets")]
         [Button(ButtonSizes.Medium)]

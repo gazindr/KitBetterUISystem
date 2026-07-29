@@ -44,9 +44,10 @@ namespace Project.UI
             get { return overriddenPaths; }
         }
 
-        protected override void Reset()
+#if UNITY_EDITOR
+        // Unity 6 uGUI: Selectable.Reset exists only in editor — cannot override for player builds.
+        protected void Reset()
         {
-            base.Reset();
             stateAnimations = UIAnimationDefaults.CreateButtonProfile();
             overriddenPaths = new List<string>();
 
@@ -68,6 +69,7 @@ namespace Project.UI
                 ApplyButtonPresetData(defaultPreset, true);
             }
         }
+#endif
 
         public void Click()
         {
@@ -178,10 +180,8 @@ namespace Project.UI
 
             stateAnimations.CopyFrom(sourcePreset.stateAnimations);
 
-            if (sourcePreset.behaviours != null)
-            {
-                behaviours = CloneBehaviourBlocks(sourcePreset.behaviours, false);
-            }
+            // Behaviours are per-instance (scene wiring). Style presets must never replace them.
+            // Use UIBehaviourPreset when you intentionally want to copy behaviours.
 
             if (clearOverrides)
             {
@@ -253,10 +253,7 @@ namespace Project.UI
 
             preset.stateAnimations.CopyFrom(stateAnimations);
 
-            if (behaviours != null)
-            {
-                preset.behaviours = CloneBehaviourBlocks(behaviours, false);
-            }
+            // Do not push instance behaviours into the style preset — they stay on the button only.
 
             UIPresetOverrideUtility.ClearOverrides(overriddenPaths);
         }
@@ -273,6 +270,7 @@ namespace Project.UI
 
         private void PlayClickSound()
         {
+            // null customClickSound → global SFXManager Ui Click Clip
             UISFX.Play(UISFXKind.Click, customClickSound, muteUISound);
         }
     }

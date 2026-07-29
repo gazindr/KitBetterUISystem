@@ -569,6 +569,9 @@ namespace Project.UI
         {
             state = UIContainerState.Showing;
             EnsureCanvasGroup();
+            // Hide may leave scale/alpha at "hidden" end values. Show often targets
+            // CurrentValue — without this reset that becomes 0→0 and the UI stays invisible.
+            UIAnimationRunner.ApplyStartValues(cachedRectTransform);
             cachedCanvasGroup.blocksRaycasts = false;
             cachedCanvasGroup.interactable = false;
 

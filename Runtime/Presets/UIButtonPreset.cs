@@ -50,6 +50,7 @@ namespace Project.UI
         public UISelectableAnimationProfile stateAnimations = new UISelectableAnimationProfile();
 
         [TabGroup("Behaviours")]
+        [InfoBox("Behaviours on this asset are ignored when applying a Button Preset. Instance behaviours on the UIButton are never overwritten. Use Behaviour Preset to copy behaviours.")]
         [ListDrawerSettings(ShowFoldout = true, DefaultExpandedState = true)]
         public List<UIBehaviourBlock> behaviours = new List<UIBehaviourBlock>();
 
