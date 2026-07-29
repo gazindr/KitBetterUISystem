@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.9 - 2026-07-29
+
+- Inspector: quick-click buttons (LMB / MMB / RMB) above the behaviour trigger dropdown for faster Pointer Left/Middle/Right Click setup; those triggers are removed from the dropdown.
+
 ## 0.1.8 - 2026-07-25
 
 - Inspector RMB on UIContainer/UIButton fields: **Apply to Preset** / **Revert to Preset** via Unity `contextualPropertyMenu` (Unity's own PropertyField menu was swallowing the old ContextClick handler).

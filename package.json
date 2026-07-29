@@ -1,6 +1,6 @@
 {
   "name": "com.yeen.ui-system",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "displayName": "UI System",
   "description": "Personal Unity UI system with containers, selectable animations, queues, behaviours, presets, and Odin Inspector based authoring.",
   "unity": "6000.0",

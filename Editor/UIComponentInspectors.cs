@@ -25,6 +25,28 @@ namespace Project.UI.Editor
         private static readonly string[] ToggleTargetTabs = { "Bg Select", "Bg Deselect", "Handle Select", "Handle Deselect" };
         private static readonly string[] ToggleTargetProperties = { "backgroundSelectAnimation", "backgroundDeselectAnimation", "handleSelectAnimation", "handleDeselectAnimation" };
 
+        private static readonly UIBehaviourTrigger[] QuickClickTriggers =
+        {
+            UIBehaviourTrigger.PointerLeftClick,
+            UIBehaviourTrigger.PointerMiddleClick,
+            UIBehaviourTrigger.PointerRightClick
+        };
+
+        private static readonly string[] QuickClickFallbackLabels = { "LMB", "MMB", "RMB" };
+        private static readonly string[] QuickClickTooltips =
+        {
+            "Add Pointer Left Click (LMB)",
+            "Add Pointer Middle Click (MMB)",
+            "Add Pointer Right Click (RMB)"
+        };
+
+        private static readonly Color[] QuickClickColors =
+        {
+            new Color(0.35f, 0.62f, 0.95f, 1f),
+            new Color(0.95f, 0.62f, 0.28f, 1f),
+            new Color(0.88f, 0.38f, 0.62f, 1f)
+        };
+
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
@@ -212,16 +234,28 @@ namespace Project.UI.Editor
         {
             BeginSection("Add Behaviour");
             SerializedProperty blocks = serializedObject.FindProperty("behaviours");
-            List<UIBehaviourTrigger> availableTriggers = BuildAvailableTriggers(blocks);
-            if (availableTriggers.Count == 0)
+            DrawQuickClickButtons(selectable, blocks);
+
+            List<UIBehaviourTrigger> availableTriggers = BuildAvailableTriggers(blocks, excludeQuickClicks: true);
+            List<UIBehaviourTrigger> allAvailable = BuildAvailableTriggers(blocks, excludeQuickClicks: false);
+            if (allAvailable.Count == 0)
             {
                 EditorGUILayout.HelpBox("All triggers are already used. Remove an existing block to make its trigger available again.", MessageType.Info);
+            }
+            else if (availableTriggers.Count == 0)
+            {
+                EditorGUILayout.HelpBox("Remaining triggers are available via the click buttons above.", MessageType.None);
             }
             else
             {
                 SerializedProperty triggerToAdd = serializedObject.FindProperty("behaviourToAdd");
                 UIBehaviourTrigger selectedTrigger = triggerToAdd == null ? availableTriggers[0] : (UIBehaviourTrigger)triggerToAdd.enumValueIndex;
-                int selectedIndex = Mathf.Max(0, availableTriggers.IndexOf(selectedTrigger));
+                int selectedIndex = availableTriggers.IndexOf(selectedTrigger);
+                if (selectedIndex < 0)
+                {
+                    selectedIndex = 0;
+                }
+
                 string[] labels = BuildTriggerLabels(availableTriggers);
                 selectedIndex = EditorGUILayout.Popup("Trigger To Add", selectedIndex, labels);
                 selectedTrigger = availableTriggers[selectedIndex];
@@ -232,11 +266,7 @@ namespace Project.UI.Editor
 
                 if (GreenButton("Add Behaviour"))
                 {
-                    serializedObject.ApplyModifiedProperties();
-                    Undo.RecordObject(selectable, "Add UI Behaviour");
-                    selectable.AddBehaviourBlock(selectedTrigger);
-                    EditorUtility.SetDirty(selectable);
-                    serializedObject.Update();
+                    AddBehaviourBlock(selectable, selectedTrigger);
                 }
             }
 
@@ -245,7 +275,7 @@ namespace Project.UI.Editor
             blocks = serializedObject.FindProperty("behaviours");
             if (blocks == null || blocks.arraySize == 0)
             {
-                EditorGUILayout.HelpBox("No behaviour blocks. Choose a trigger above and press Add Behaviour.", MessageType.Info);
+                EditorGUILayout.HelpBox("No behaviour blocks. Use a click button above or choose a trigger and press Add Behaviour.", MessageType.Info);
                 return;
             }
 
@@ -260,6 +290,67 @@ namespace Project.UI.Editor
             SerializedProperty block = blocks.GetArrayElementAtIndex(blockTab);
             DrawBehaviourBlock(selectable, blocks, block, blockTab);
             EndSection();
+        }
+
+        private void DrawQuickClickButtons(UISelectable selectable, SerializedProperty blocks)
+        {
+            EditorGUILayout.LabelField("Quick Click", EditorStyles.miniLabel);
+            EditorGUILayout.BeginHorizontal();
+            GUILayout.FlexibleSpace();
+            for (int i = 0; i < QuickClickTriggers.Length; i++)
+            {
+                UIBehaviourTrigger trigger = QuickClickTriggers[i];
+                bool available = !IsTriggerUsed(blocks, trigger);
+                Texture2D icon = GetQuickClickIcon(i);
+                string tooltip = QuickClickTooltips[i] + (available ? string.Empty : " (already added)");
+
+                Rect buttonRect = GUILayoutUtility.GetRect(40f, 40f, GUILayout.Width(40f), GUILayout.Height(40f));
+                using (new EditorGUI.DisabledScope(!available))
+                {
+                    Color previous = GUI.backgroundColor;
+                    GUI.backgroundColor = available ? QuickClickColors[i] : new Color(0.4f, 0.4f, 0.4f, 1f);
+                    if (GUI.Button(buttonRect, new GUIContent(string.Empty, tooltip)))
+                    {
+                        AddBehaviourBlock(selectable, trigger);
+                    }
+
+                    GUI.backgroundColor = previous;
+                }
+
+                if (icon != null)
+                {
+                    Rect iconRect = new Rect(buttonRect.x + 4f, buttonRect.y + 4f, buttonRect.width - 8f, buttonRect.height - 8f);
+                    GUI.DrawTexture(iconRect, icon, ScaleMode.ScaleToFit, true);
+                }
+                else
+                {
+                    GUI.Label(buttonRect, QuickClickFallbackLabels[i], EditorStyles.centeredGreyMiniLabel);
+                }
+
+                if (i < QuickClickTriggers.Length - 1)
+                {
+                    GUILayout.Space(6f);
+                }
+            }
+
+            GUILayout.FlexibleSpace();
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.Space(6f);
+        }
+
+        private void AddBehaviourBlock(UISelectable selectable, UIBehaviourTrigger trigger)
+        {
+            serializedObject.ApplyModifiedProperties();
+            Undo.RecordObject(selectable, "Add UI Behaviour");
+            selectable.AddBehaviourBlock(trigger);
+            EditorUtility.SetDirty(selectable);
+            serializedObject.Update();
+        }
+
+        private static Texture2D GetQuickClickIcon(int index)
+        {
+            Texture2D[] icons = GetQuickClickIcons();
+            return icons != null && index >= 0 && index < icons.Length ? icons[index] : null;
         }
 
         private void NormalizeBehaviourBlocks(UISelectable selectable, SerializedProperty blocks)
@@ -475,19 +566,38 @@ namespace Project.UI.Editor
             return labels;
         }
 
-        private static List<UIBehaviourTrigger> BuildAvailableTriggers(SerializedProperty blocks)
+        private static List<UIBehaviourTrigger> BuildAvailableTriggers(SerializedProperty blocks, bool excludeQuickClicks = false)
         {
             List<UIBehaviourTrigger> triggers = new List<UIBehaviourTrigger>();
             UIBehaviourTrigger[] all = (UIBehaviourTrigger[])System.Enum.GetValues(typeof(UIBehaviourTrigger));
             for (int i = 0; i < all.Length; i++)
             {
-                if (!IsTriggerUsed(blocks, all[i]))
+                UIBehaviourTrigger trigger = all[i];
+                if (excludeQuickClicks && IsQuickClickTrigger(trigger))
                 {
-                    triggers.Add(all[i]);
+                    continue;
+                }
+
+                if (!IsTriggerUsed(blocks, trigger))
+                {
+                    triggers.Add(trigger);
                 }
             }
 
             return triggers;
+        }
+
+        private static bool IsQuickClickTrigger(UIBehaviourTrigger trigger)
+        {
+            for (int i = 0; i < QuickClickTriggers.Length; i++)
+            {
+                if (QuickClickTriggers[i] == trigger)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private static bool IsTriggerUsed(SerializedProperty blocks, UIBehaviourTrigger trigger)
@@ -857,6 +967,13 @@ namespace Project.UI.Editor
             "Fade.png"
         };
 
+        private static readonly string[] QuickClickIconFiles =
+        {
+            "PointerLeftClick.png",
+            "PointerMiddleClick.png",
+            "PointerRightClick.png"
+        };
+
         private static readonly Color MoveColor = new Color(0.55f, 0.92f, 0.28f, 1f);
         private static readonly Color RotateColor = new Color(1f, 0.55f, 0.12f, 1f);
         private static readonly Color ScaleColor = new Color(0.9f, 0.2f, 0.45f, 1f);
@@ -864,6 +981,7 @@ namespace Project.UI.Editor
         private static readonly Color[] AnimationColors = { MoveColor, RotateColor, ScaleColor, FadeColor };
 
         private static Texture2D[] animationIcons;
+        private static Texture2D[] quickClickIcons;
         private static GUIStyle toolbarStyle;
         private static GUIStyle animationToolbarStyle;
         private static GUIStyle animationToolbarSelectedStyle;
@@ -1105,6 +1223,22 @@ namespace Project.UI.Editor
             }
 
             return animationIcons;
+        }
+
+        public static Texture2D[] GetQuickClickIcons()
+        {
+            if (quickClickIcons != null)
+            {
+                return quickClickIcons;
+            }
+
+            quickClickIcons = new Texture2D[QuickClickIconFiles.Length];
+            for (int i = 0; i < QuickClickIconFiles.Length; i++)
+            {
+                quickClickIcons[i] = LoadAnimationIcon(QuickClickIconFiles[i]);
+            }
+
+            return quickClickIcons;
         }
 
         private static Texture2D LoadAnimationIcon(string fileName)
