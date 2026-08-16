@@ -511,6 +511,10 @@ namespace Project.UI.Editor
             {
                 UIPresetOverrideDrawer.DrawButtonPresetsTab(serializedObject, button);
             }
+            else if (selectable is UIToggle toggle)
+            {
+                UIPresetOverrideDrawer.DrawTogglePresetsTab(serializedObject, toggle);
+            }
             else
             {
                 DrawProperty("preset", "Preset");
@@ -845,6 +849,7 @@ namespace Project.UI.Editor
             DrawRelative(background, "backgroundInstance", "Background Instance");
             DrawRelative(background, "backgroundPrefab", "Background Prefab");
             DrawRelative(background, "autoCreate", "Auto Create");
+            DrawRelative(background, "attachMode", "Attach Mode", false, "Behind Container: sibling immediately before this container, so Scale/Move on the container does not affect the dimmer. Inside Container: first child (inherits container transform).");
             DrawRelative(background, "backgroundColor", "Color");
             DrawRelative(background, "backgroundAlpha", "Alpha");
             DrawRelative(background, "raycastTarget", "Raycast Target");
@@ -1465,13 +1470,13 @@ namespace Project.UI.Editor
             EditorGUILayout.EndVertical();
         }
 
-        public static void DrawRelative(SerializedProperty root, string propertyName, string label, bool includeChildren = false)
+        public static void DrawRelative(SerializedProperty root, string propertyName, string label, bool includeChildren = false, string tooltip = null)
         {
             SerializedProperty property = root.FindPropertyRelative(propertyName);
-            DrawProperty(property, label, includeChildren);
+            DrawProperty(property, label, includeChildren, tooltip);
         }
 
-        private static void DrawProperty(SerializedProperty property, string label, bool includeChildren = false)
+        private static void DrawProperty(SerializedProperty property, string label, bool includeChildren = false, string tooltip = null)
         {
             if (property == null)
             {
@@ -1487,7 +1492,7 @@ namespace Project.UI.Editor
             float previousLabelWidth = EditorGUIUtility.labelWidth;
             float needed = Mathf.Clamp(EditorStyles.label.CalcSize(new GUIContent(label)).x + 18f, FieldColumnLabelWidth, 220f);
             EditorGUIUtility.labelWidth = needed;
-            EditorGUILayout.PropertyField(property, new GUIContent(label), includeChildren);
+            EditorGUILayout.PropertyField(property, new GUIContent(label, tooltip), includeChildren);
             EditorGUIUtility.labelWidth = previousLabelWidth;
         }
 

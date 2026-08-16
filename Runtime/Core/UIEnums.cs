@@ -33,6 +33,12 @@
         Show
     }
 
+    public enum UIBackgroundAttachMode
+    {
+        BehindContainer = 0,
+        InsideContainer = 1
+    }
+
     public enum UIBehaviourTrigger
     {
         PointerEnter,

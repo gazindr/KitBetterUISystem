@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.11 - 2026-08-16
+
+- `UIBackground` default attach mode is now `Behind Container`: spawn as a sibling immediately before the container so Scale/Move on the panel does not scale the dimmer. `Inside Container` keeps the old child behavior.
+
 ## 0.1.10 - 2026-07-29
 
 - Fix button / selectable position snap-back: return-to-start only when the previous state actually animated that property (manual RectTransform edits no longer get snapped to a cached start pose).

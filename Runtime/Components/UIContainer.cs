@@ -40,6 +40,10 @@ namespace Project.UI
         public float queueShowDelay;
 
         [TabGroup("Settings")]
+        [Tooltip("Не прячется и не блокируется ShowIsolated (Death/Pause и т.п.). Для оверлеев поверх очереди.")]
+        public bool ignoreIsolation;
+
+        [TabGroup("Settings")]
         public bool useAutoHide;
 
         [TabGroup("Settings")]
@@ -105,6 +109,7 @@ namespace Project.UI
         private RectTransform cachedRectTransform;
         private CanvasGroup cachedCanvasGroup;
         private UIBackground runtimeBackground;
+        private bool ownsRuntimeBackground;
 
         public event Action<UIContainer> ShowStarted;
         public event Action<UIContainer> Visible;
@@ -177,6 +182,11 @@ namespace Project.UI
             get { return Mathf.Max(0f, queueShowDelay); }
         }
 
+        public bool IgnoreIsolation
+        {
+            get { return ignoreIsolation; }
+        }
+
         public void Show()
         {
             StartShow(false, false);
@@ -187,6 +197,17 @@ namespace Project.UI
         {
             UICursorBridge.Apply(showCursor);
             Show();
+        }
+
+        /// <summary>
+        /// Shows immediately even if another queued container (Death/Pause) is active.
+        /// Still respects isolation unless <see cref="ignoreIsolation"/> is set.
+        /// </summary>
+        public void ShowParallel(bool instant = false)
+        {
+            // Убрать возможный pending-entry из очереди, иначе после Hide Death он всплывёт ещё раз.
+            UIContainerQueueManager.Remove(this);
+            StartShow(instant, true);
         }
 
         /// <summary>
@@ -463,6 +484,7 @@ namespace Project.UI
             StopTransitionRoutine();
             StopAutoHideRoutine();
             StopAnimations();
+            HideDetachedBackground();
             if (state != UIContainerState.Hidden)
             {
                 state = UIContainerState.Hidden;
@@ -476,6 +498,7 @@ namespace Project.UI
             UIContainerIsolationManager.Remove(this);
             UIContainerQueueManager.Remove(this);
             UIRegistry.Unregister(this);
+            DestroyOwnedBackground();
         }
 
         private void OnValidate()
@@ -674,6 +697,10 @@ namespace Project.UI
 
             bool backgroundDone = true;
             UIBackground background = runtimeBackground;
+            if (background == null && backgroundSettings != null && backgroundSettings.useBackground && backgroundSettings.backgroundInstance != null)
+            {
+                background = PrepareBackground();
+            }
 
             if (backgroundSettings != null && backgroundSettings.useBackground && background != null && !backgroundSettings.waitForContainerBeforeBackground)
             {
@@ -771,24 +798,38 @@ namespace Project.UI
             if (backgroundSettings.backgroundInstance != null)
             {
                 runtimeBackground = backgroundSettings.backgroundInstance;
+                ownsRuntimeBackground = false;
             }
 
+            if (runtimeBackground == null)
+            {
+                runtimeBackground = GetComponentInChildren<UIBackground>(true);
+                if (runtimeBackground != null)
+                {
+                    ownsRuntimeBackground = false;
+                }
+            }
+
+            Transform backgroundParent = GetBackgroundParent();
             if (runtimeBackground == null && backgroundSettings.backgroundPrefab != null)
             {
-                GameObject backgroundObject = Instantiate(backgroundSettings.backgroundPrefab, transform);
+                GameObject backgroundObject = Instantiate(backgroundSettings.backgroundPrefab, backgroundParent);
                 backgroundObject.name = backgroundSettings.backgroundPrefab.name + " (UI System)";
                 runtimeBackground = backgroundObject.GetComponent<UIBackground>();
                 if (runtimeBackground == null)
                 {
                     runtimeBackground = backgroundObject.AddComponent<UIBackground>();
                 }
+
+                ownsRuntimeBackground = true;
             }
 
             if (runtimeBackground == null && backgroundSettings.autoCreate)
             {
                 GameObject backgroundObject = new GameObject(name + " Background", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(CanvasGroup), typeof(UIBackground));
-                backgroundObject.transform.SetParent(transform, false);
+                backgroundObject.transform.SetParent(backgroundParent, false);
                 runtimeBackground = backgroundObject.GetComponent<UIBackground>();
+                ownsRuntimeBackground = true;
             }
 
             if (runtimeBackground == null)
@@ -796,15 +837,88 @@ namespace Project.UI
                 return null;
             }
 
-            // Always keep background as the first child so it draws behind container content.
-            if (runtimeBackground.transform.parent != transform)
-            {
-                runtimeBackground.transform.SetParent(transform, false);
-            }
-
-            runtimeBackground.transform.SetAsFirstSibling();
+            PlaceBackground(runtimeBackground.transform, backgroundParent);
             runtimeBackground.Initialize(this, backgroundSettings);
             return runtimeBackground;
+        }
+
+        private Transform GetBackgroundParent()
+        {
+            if (backgroundSettings != null && backgroundSettings.attachMode == UIBackgroundAttachMode.InsideContainer)
+            {
+                return transform;
+            }
+
+            if (transform.parent != null)
+            {
+                return transform.parent;
+            }
+
+            return transform;
+        }
+
+        private void PlaceBackground(Transform backgroundTransform, Transform backgroundParent)
+        {
+            if (backgroundTransform == null || backgroundParent == null)
+            {
+                return;
+            }
+
+            if (backgroundTransform.parent != backgroundParent)
+            {
+                backgroundTransform.SetParent(backgroundParent, false);
+            }
+
+            if (backgroundParent == transform)
+            {
+                backgroundTransform.SetAsFirstSibling();
+                return;
+            }
+
+            int containerIndex = transform.GetSiblingIndex();
+            int backgroundIndex = backgroundTransform.GetSiblingIndex();
+            int desiredIndex = backgroundIndex < containerIndex ? containerIndex - 1 : containerIndex;
+            if (backgroundIndex != desiredIndex)
+            {
+                backgroundTransform.SetSiblingIndex(desiredIndex);
+            }
+        }
+
+        private void HideDetachedBackground()
+        {
+            if (!Application.isPlaying || runtimeBackground == null || runtimeBackground.transform.parent == transform)
+            {
+                return;
+            }
+
+            runtimeBackground.InstantHide();
+        }
+
+        private void DestroyOwnedBackground()
+        {
+            if (runtimeBackground == null)
+            {
+                return;
+            }
+
+            if (ownsRuntimeBackground && runtimeBackground.gameObject != null)
+            {
+                if (Application.isPlaying)
+                {
+                    Destroy(runtimeBackground.gameObject);
+                }
+                else
+                {
+                    DestroyImmediate(runtimeBackground.gameObject);
+                }
+            }
+            else if (Application.isPlaying && runtimeBackground.transform.parent != transform)
+            {
+                runtimeBackground.InstantHide();
+            }
+
+            runtimeBackground = null;
+            ownsRuntimeBackground = false;
         }
 
         private void EnsureCanvasGroup()

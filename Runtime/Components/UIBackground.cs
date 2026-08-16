@@ -21,6 +21,10 @@ namespace Project.UI
         public bool autoCreate = true;
 
         [ShowIf(nameof(useBackground))]
+        [Tooltip("Behind Container: sibling immediately before this container, so Scale/Move on the container does not affect the dimmer. Inside Container: first child (inherits container transform).")]
+        public UIBackgroundAttachMode attachMode = UIBackgroundAttachMode.BehindContainer;
+
+        [ShowIf(nameof(useBackground))]
         public Color backgroundColor = Color.black;
 
         [ShowIf(nameof(useBackground))]
@@ -62,6 +66,7 @@ namespace Project.UI
             backgroundInstance = source.backgroundInstance;
             backgroundPrefab = source.backgroundPrefab;
             autoCreate = source.autoCreate;
+            attachMode = source.attachMode;
             backgroundColor = source.backgroundColor;
             backgroundAlpha = source.backgroundAlpha;
             raycastTarget = source.raycastTarget;
