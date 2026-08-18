@@ -1,4 +1,5 @@
-﻿using Sirenix.OdinInspector;
+﻿using System.Collections.Generic;
+using Sirenix.OdinInspector;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
@@ -66,16 +67,29 @@ namespace Project.UI
         public UnityEvent onMultipleSelect = new UnityEvent();
 
         [TabGroup("Presets")]
-        [InlineEditor(InlineEditorObjectFieldModes.Boxed)]
         public UITogglePreset preset;
 
         [TabGroup("Presets")]
-        [HideLabel]
+        [HideInInspector]
         public UIPresetApplyMask presetApplyMask = new UIPresetApplyMask();
+
+        [SerializeField]
+        private List<string> overriddenPaths = new List<string>();
 
         [SerializeField]
         [HideInInspector]
         private int selectCount;
+
+        public UITogglePreset Preset
+        {
+            get { return preset; }
+            set { preset = value; }
+        }
+
+        public List<string> OverriddenPaths
+        {
+            get { return overriddenPaths; }
+        }
 
         public bool IsOn
         {
@@ -176,6 +190,46 @@ namespace Project.UI
             }
         }
 
+        public void ApplyTogglePresetData(UITogglePreset sourcePreset)
+        {
+            ApplyTogglePresetData(sourcePreset, true);
+        }
+
+        public void ApplyTogglePresetData(UITogglePreset sourcePreset, bool clearOverrides)
+        {
+            if (sourcePreset == null)
+            {
+                return;
+            }
+
+            interactable = sourcePreset.interactable;
+            multipleSelectCount = sourcePreset.multipleSelectCount;
+            resetMultipleCounterOnDeselect = sourcePreset.resetMultipleCounterOnDeselect;
+            blockPointerWhenDisabled = sourcePreset.blockPointerWhenDisabled;
+            invokeOnSubmit = sourcePreset.invokeOnSubmit;
+            useInQueue = sourcePreset.useInQueue;
+            queueGroup = sourcePreset.queueGroup;
+            queueReleaseDelay = sourcePreset.queueReleaseDelay;
+
+            if (stateAnimations == null)
+            {
+                stateAnimations = new UISelectableAnimationProfile();
+            }
+
+            stateAnimations.CopyFrom(sourcePreset.stateAnimations);
+            CopyToggleAnimation(ref backgroundSelectAnimation, sourcePreset.backgroundSelectAnimation);
+            CopyToggleAnimation(ref backgroundDeselectAnimation, sourcePreset.backgroundDeselectAnimation);
+            CopyToggleAnimation(ref handleSelectAnimation, sourcePreset.handleSelectAnimation);
+            CopyToggleAnimation(ref handleDeselectAnimation, sourcePreset.handleDeselectAnimation);
+
+            // Behaviours, scene targets, and UnityEvents stay on the instance.
+
+            if (clearOverrides)
+            {
+                UIPresetOverrideUtility.ClearOverrides(overriddenPaths);
+            }
+        }
+
         public void ApplyTogglePresetData(UITogglePreset sourcePreset, UIPresetApplyMask mask)
         {
             if (sourcePreset == null)
@@ -205,10 +259,10 @@ namespace Project.UI
 
             if (mask == null || mask.ShouldApplyAnimations)
             {
-                backgroundSelectAnimation.CopyFrom(sourcePreset.backgroundSelectAnimation);
-                backgroundDeselectAnimation.CopyFrom(sourcePreset.backgroundDeselectAnimation);
-                handleSelectAnimation.CopyFrom(sourcePreset.handleSelectAnimation);
-                handleDeselectAnimation.CopyFrom(sourcePreset.handleDeselectAnimation);
+                CopyToggleAnimation(ref backgroundSelectAnimation, sourcePreset.backgroundSelectAnimation);
+                CopyToggleAnimation(ref backgroundDeselectAnimation, sourcePreset.backgroundDeselectAnimation);
+                CopyToggleAnimation(ref handleSelectAnimation, sourcePreset.handleSelectAnimation);
+                CopyToggleAnimation(ref handleDeselectAnimation, sourcePreset.handleDeselectAnimation);
             }
 
             if (mask != null && mask.ShouldApplyCallbacks)
@@ -218,6 +272,74 @@ namespace Project.UI
                 onDeselected = sourcePreset.onDeselected;
                 onMultipleSelect = sourcePreset.onMultipleSelect;
             }
+        }
+
+        public void ApplyPresetKeepingOverrides()
+        {
+            if (preset == null)
+            {
+                return;
+            }
+
+            if (overriddenPaths == null || overriddenPaths.Count == 0)
+            {
+                ApplyTogglePresetData(preset, false);
+                return;
+            }
+
+#if UNITY_EDITOR
+            UIPresetOverrideSync.ApplyNonOverridden(this, preset, overriddenPaths);
+#else
+            ApplyTogglePresetData(preset, false);
+#endif
+        }
+
+        public bool IsPathOverridden(string path)
+        {
+            return UIPresetOverrideUtility.IsOverridden(overriddenPaths, path);
+        }
+
+        public void SetPathOverridden(string path, bool isOverride)
+        {
+            UIPresetOverrideUtility.SetOverride(overriddenPaths, path, isOverride);
+        }
+
+        public void ApplyPresetFromInspector()
+        {
+            if (preset != null)
+            {
+                ApplyTogglePresetData(preset, true);
+            }
+        }
+
+        public void SaveAllToPreset()
+        {
+            if (preset == null)
+            {
+                return;
+            }
+
+            preset.interactable = interactable;
+            preset.multipleSelectCount = multipleSelectCount;
+            preset.resetMultipleCounterOnDeselect = resetMultipleCounterOnDeselect;
+            preset.blockPointerWhenDisabled = blockPointerWhenDisabled;
+            preset.invokeOnSubmit = invokeOnSubmit;
+            preset.useInQueue = useInQueue;
+            preset.queueGroup = queueGroup;
+            preset.queueReleaseDelay = queueReleaseDelay;
+
+            if (preset.stateAnimations == null)
+            {
+                preset.stateAnimations = new UISelectableAnimationProfile();
+            }
+
+            preset.stateAnimations.CopyFrom(stateAnimations);
+            CopyToggleAnimation(ref preset.backgroundSelectAnimation, backgroundSelectAnimation);
+            CopyToggleAnimation(ref preset.backgroundDeselectAnimation, backgroundDeselectAnimation);
+            CopyToggleAnimation(ref preset.handleSelectAnimation, handleSelectAnimation);
+            CopyToggleAnimation(ref preset.handleDeselectAnimation, handleDeselectAnimation);
+
+            UIPresetOverrideUtility.ClearOverrides(overriddenPaths);
         }
 
         protected override void OnEnable()
@@ -242,10 +364,17 @@ namespace Project.UI
         [GUIColor(0.4f, 0.7f, 1f)]
         private void ApplyPreset()
         {
-            if (preset != null)
+            ApplyTogglePresetData(preset, true);
+        }
+
+        private static void CopyToggleAnimation(ref UIAnimationState destination, UIAnimationState source)
+        {
+            if (destination == null)
             {
-                preset.ApplyTo(this, presetApplyMask);
+                destination = new UIAnimationState();
             }
+
+            destination.CopyFrom(source);
         }
 
         private void PlayToggleAnimations(bool selected, bool instant)

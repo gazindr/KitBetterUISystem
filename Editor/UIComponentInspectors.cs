@@ -53,9 +53,14 @@ namespace Project.UI.Editor
 
             UISelectable selectable = (UISelectable)target;
             UIButton button = selectable as UIButton;
+            UIToggle toggle = selectable as UIToggle;
             if (button != null)
             {
                 UIPresetOverrideDrawer.Begin(button, button.preset, button.OverriddenPaths, serializedObject);
+            }
+            else if (toggle != null)
+            {
+                UIPresetOverrideDrawer.Begin(toggle, toggle.preset, toggle.OverriddenPaths, serializedObject);
             }
 
             int key = selectable.GetHashCode();
@@ -84,7 +89,7 @@ namespace Project.UI.Editor
             }
 
             serializedObject.ApplyModifiedProperties();
-            if (button != null)
+            if (button != null || toggle != null)
             {
                 UIPresetOverrideDrawer.End();
             }

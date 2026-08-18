@@ -30,7 +30,7 @@ namespace Project.UI.Editor
             }
 
             Object target = property.serializedObject.targetObject;
-            if (!(target is UIContainer) && !(target is UIButton))
+            if (!(target is UIContainer) && !(target is UIButton) && !(target is UIToggle))
             {
                 return;
             }
@@ -103,7 +103,13 @@ namespace Project.UI.Editor
             }
 
             UIButton button = component as UIButton;
-            return button != null ? button.preset : null;
+            if (button != null)
+            {
+                return button.preset;
+            }
+
+            UIToggle toggle = component as UIToggle;
+            return toggle != null ? toggle.preset : null;
         }
 
         private static List<string> GetOverrides(Object component)
@@ -115,7 +121,13 @@ namespace Project.UI.Editor
             }
 
             UIButton button = component as UIButton;
-            return button != null ? button.OverriddenPaths : null;
+            if (button != null)
+            {
+                return button.OverriddenPaths;
+            }
+
+            UIToggle toggle = component as UIToggle;
+            return toggle != null ? toggle.OverriddenPaths : null;
         }
 
         public static void DrawContainerPresetsTab(SerializedObject serializedObject, UIContainer container)
@@ -230,6 +242,65 @@ namespace Project.UI.Editor
             if (GUILayout.Button("+", GUILayout.Width(28f)))
             {
                 CreateButtonPresetAsset(button, serializedObject);
+            }
+
+            EditorGUILayout.EndHorizontal();
+            EditorGUILayout.EndVertical();
+        }
+
+        public static void DrawTogglePresetsTab(SerializedObject serializedObject, UIToggle toggle)
+        {
+            if (toggle == null)
+            {
+                return;
+            }
+
+            SerializedProperty presetProp = serializedObject.FindProperty("preset");
+            if (presetProp == null)
+            {
+                return;
+            }
+
+            UITogglePreset preset = presetProp.objectReferenceValue as UITogglePreset;
+            bool dirty = IsToggleDirty(toggle, preset);
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.BeginHorizontal();
+            EditorGUI.BeginChangeCheck();
+            EditorGUILayout.PropertyField(presetProp, new GUIContent(dirty ? "Preset *" : "Preset"));
+            if (EditorGUI.EndChangeCheck())
+            {
+                serializedObject.ApplyModifiedProperties();
+                preset = presetProp.objectReferenceValue as UITogglePreset;
+                if (preset != null)
+                {
+                    Undo.RecordObject(toggle, "Apply Toggle Preset");
+                    toggle.ApplyTogglePresetData(preset, true);
+                    EditorUtility.SetDirty(toggle);
+                    serializedObject.Update();
+                }
+                else
+                {
+                    UIPresetOverrideUtility.ClearOverrides(toggle.OverriddenPaths);
+                }
+            }
+
+            using (new EditorGUI.DisabledScope(preset == null || !dirty))
+            {
+                if (GUILayout.Button("Save", GUILayout.Width(52f)))
+                {
+                    Undo.RecordObject(preset, "Save Toggle Preset");
+                    toggle.SaveAllToPreset();
+                    EditorUtility.SetDirty(preset);
+                    EditorUtility.SetDirty(toggle);
+                    AssetDatabase.SaveAssets();
+                    serializedObject.Update();
+                }
+            }
+
+            if (GUILayout.Button("+", GUILayout.Width(28f)))
+            {
+                CreateTogglePresetAsset(toggle, serializedObject);
             }
 
             EditorGUILayout.EndHorizontal();
@@ -510,6 +581,42 @@ namespace Project.UI.Editor
             return UIPresetOverrideUtility.MatchesSerialized(button.stateAnimations, preset.stateAnimations);
         }
 
+        private static bool IsToggleDirty(UIToggle toggle, UITogglePreset preset)
+        {
+            if (toggle == null || preset == null)
+            {
+                return false;
+            }
+
+            if (toggle.OverriddenPaths != null && toggle.OverriddenPaths.Count > 0)
+            {
+                return true;
+            }
+
+            return !ValuesMatch(toggle, preset);
+        }
+
+        private static bool ValuesMatch(UIToggle toggle, UITogglePreset preset)
+        {
+            if (toggle.interactable != preset.interactable ||
+                toggle.multipleSelectCount != preset.multipleSelectCount ||
+                toggle.resetMultipleCounterOnDeselect != preset.resetMultipleCounterOnDeselect ||
+                toggle.blockPointerWhenDisabled != preset.blockPointerWhenDisabled ||
+                toggle.invokeOnSubmit != preset.invokeOnSubmit ||
+                toggle.useInQueue != preset.useInQueue ||
+                toggle.queueGroup != preset.queueGroup ||
+                !Mathf.Approximately(toggle.queueReleaseDelay, preset.queueReleaseDelay))
+            {
+                return false;
+            }
+
+            return UIPresetOverrideUtility.MatchesSerialized(toggle.stateAnimations, preset.stateAnimations) &&
+                   UIPresetOverrideUtility.MatchesSerialized(toggle.backgroundSelectAnimation, preset.backgroundSelectAnimation) &&
+                   UIPresetOverrideUtility.MatchesSerialized(toggle.backgroundDeselectAnimation, preset.backgroundDeselectAnimation) &&
+                   UIPresetOverrideUtility.MatchesSerialized(toggle.handleSelectAnimation, preset.handleSelectAnimation) &&
+                   UIPresetOverrideUtility.MatchesSerialized(toggle.handleDeselectAnimation, preset.handleDeselectAnimation);
+        }
+
         private static void CreateContainerPresetAsset(UIContainer container, SerializedObject serializedObject)
         {
             string path = EditorUtility.SaveFilePanelInProject(
@@ -564,6 +671,35 @@ namespace Project.UI.Editor
             button.SaveAllToPreset();
             EditorUtility.SetDirty(asset);
             EditorUtility.SetDirty(button);
+            AssetDatabase.SaveAssets();
+            EditorGUIUtility.PingObject(asset);
+        }
+
+        private static void CreateTogglePresetAsset(UIToggle toggle, SerializedObject serializedObject)
+        {
+            string path = EditorUtility.SaveFilePanelInProject(
+                "Create Toggle Preset",
+                "UITogglePreset",
+                "asset",
+                "Choose a location for the new toggle preset.");
+            if (string.IsNullOrEmpty(path))
+            {
+                return;
+            }
+
+            UITogglePreset asset = ScriptableObject.CreateInstance<UITogglePreset>();
+            AssetDatabase.CreateAsset(asset, path);
+            SerializedProperty presetProp = serializedObject.FindProperty("preset");
+            if (presetProp != null)
+            {
+                presetProp.objectReferenceValue = asset;
+                serializedObject.ApplyModifiedProperties();
+            }
+
+            toggle.preset = asset;
+            toggle.SaveAllToPreset();
+            EditorUtility.SetDirty(asset);
+            EditorUtility.SetDirty(toggle);
             AssetDatabase.SaveAssets();
             EditorGUIUtility.PingObject(asset);
         }

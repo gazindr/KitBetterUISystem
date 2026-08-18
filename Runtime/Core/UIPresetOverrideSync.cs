@@ -50,6 +50,10 @@ namespace Project.UI
             {
                 button.ApplyButtonPresetData(buttonPreset, false);
             }
+            else if (component is UIToggle toggle && preset is UITogglePreset togglePreset)
+            {
+                toggle.ApplyTogglePresetData(togglePreset, false);
+            }
 
             componentSo.Update();
             foreach (KeyValuePair<string, object> pair in saved)

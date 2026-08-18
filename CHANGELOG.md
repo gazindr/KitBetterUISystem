@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.12 - 2026-08-18
+
+- Fix CS0117: add missing `UIPresetOverrideDrawer.DrawTogglePresetsTab`.
+- Full preset + per-field overrides for `UIToggle` (Preset *, Save, `+`, orange overrides, RMB Apply/Revert), matching `UIButton`.
+
 ## 0.1.11 - 2026-08-16
 
 - `UIBackground` default attach mode is now `Behind Container`: spawn as a sibling immediately before the container so Scale/Move on the panel does not scale the dimmer. `Inside Container` keeps the old child behavior.

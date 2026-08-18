@@ -32,7 +32,7 @@ namespace Project.UI.Editor
                 Object target = modifications[i].currentValue != null
                     ? modifications[i].currentValue.target
                     : null;
-                if (target is UIContainerPreset || target is UIButtonPreset)
+                if (target is UIContainerPreset || target is UIButtonPreset || target is UITogglePreset)
                 {
                     string path = AssetDatabase.GetAssetPath(target);
                     if (!string.IsNullOrEmpty(path))
@@ -68,6 +68,10 @@ namespace Project.UI.Editor
                 {
                     SyncButtonPreset(buttonPreset);
                 }
+                else if (asset is UITogglePreset togglePreset)
+                {
+                    SyncTogglePreset(togglePreset);
+                }
             }
         }
 
@@ -102,6 +106,23 @@ namespace Project.UI.Editor
                 Undo.RecordObject(button, "Sync Button From Preset");
                 button.ApplyPresetKeepingOverrides();
                 EditorUtility.SetDirty(button);
+            }
+        }
+
+        private static void SyncTogglePreset(UITogglePreset preset)
+        {
+            UIToggle[] toggles = Object.FindObjectsByType<UIToggle>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            for (int i = 0; i < toggles.Length; i++)
+            {
+                UIToggle toggle = toggles[i];
+                if (toggle == null || toggle.preset != preset)
+                {
+                    continue;
+                }
+
+                Undo.RecordObject(toggle, "Sync Toggle From Preset");
+                toggle.ApplyPresetKeepingOverrides();
+                EditorUtility.SetDirty(toggle);
             }
         }
     }

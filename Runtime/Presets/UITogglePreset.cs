@@ -65,6 +65,7 @@ namespace Project.UI
         public UIAnimationState handleDeselectAnimation = new UIAnimationState();
 
         [TabGroup("Behaviours")]
+        [InfoBox("Behaviours on this asset are ignored when applying a Toggle Preset. Instance behaviours on the UIToggle are never overwritten. Use Behaviour Preset to copy behaviours.")]
         [ListDrawerSettings(ShowFoldout = true, DefaultExpandedState = true)]
         public List<UIBehaviourBlock> behaviours = new List<UIBehaviourBlock>();
 
@@ -84,7 +85,7 @@ namespace Project.UI
         {
             if (toggle != null)
             {
-                toggle.ApplyTogglePresetData(this, ResolveMask(overrideMask));
+                toggle.ApplyTogglePresetData(this, true);
             }
         }
     }
